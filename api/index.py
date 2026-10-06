@@ -91,7 +91,7 @@ def detect(b):
 # ---------------------------------------------------------------- platform files -> cards
 
 def _card(**k):
-    base = dict(out_track='', req='-', ret_track='-', req_date='', refund_date='', cancel_date='', ship_date='', dispute_by='', reason='')
+    base = dict(out_track='', req='-', ret_track='-', req_date='', refund_date='', cancel_date='', ship_date='', dispute_by='', reason='', ret_arrived='')
     base.update(k)
     return base
 
@@ -128,6 +128,7 @@ def build_sh_rr(rows, st):
                                status='%s / %s' % (s, lg or 'ไม่มีการส่งคืน'), date=s10(d),
                                req_date=s10(r.get('เวลายื่นคำขอคืนเงิน/คืนสินค้า')), refund_date=s10(r.get('เวลาที่คืนเงิน')),
                                refund_amt=num(r.get('จำนวนเงินคืนทั้งหมด')), dispute_by=s10(r.get('ผู้ขายสามารถยื่นข้อพิพาทได้ภายใน')),
+                               ret_arrived=s10(r.get('เวลาที่จัดส่งสินค้าคืนสำเร็จ')),
                                reason=str(r.get('เหตุผลในการขอคืนสินค้า') or ''), todo=todo, items=[])
         cards[cid]['items'].append(dict(name=str(r.get('ชื่อสินค้า') or ''), var=str(r.get('ชื่อตัวเลือกสินค้า') or '-'), qty=int(num(r.get('จำนวนสินค้าคืน')))))
         st['card_rows'] += 1

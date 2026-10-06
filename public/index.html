@@ -315,7 +315,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     var total=c.items.reduce(function(a,i){return a+(+i.qty||0)},0);
     var isFd=c.req==="-";
     var h='<article class="card u'+c.rank+(c.pinned?' pinned':'')+'" data-id="'+esc(c.id)+'">'+
-      '<div class="card-h"><span class="urg">'+esc(c.urg)+'</span><span>'+esc(c.typ)+'</span><span class="pf">'+esc(c.platform||"")+'</span>'+pinBtn(c)+'</div><div class="card-b">'+daysHTML(c)+
+      '<div class="card-h"><span class="urg">'+esc(c.urg)+'</span><span>'+esc(c.typ)+'</span><span class="pf">'+esc(c.platform||"")+'</span>'+pinBtn(c)+'</div><div class="card-b">'+urgHTML(c)+daysHTML(c)+
       '<div><span class="lbl">เลขพัสดุบนกล่อง</span><div class="big">'+(boxNo(c)?hl(boxNo(c)):'<span style="font-family:var(--f);font-size:18px;color:var(--muted)">ยังไม่มีเลขพัสดุ</span>')+'</div></div>'+
       '<div><span class="lbl">ของในกล่อง รวม '+total+' ชิ้น</span><ul class="items">'+
       c.items.map(function(i){return '<li><div><div class="v">'+esc(i.var&&i.var!=="-"?i.var:i.name)+'</div><div class="n">'+esc(i.var&&i.var!=="-"?i.name:"")+'</div></div><div class="q">×'+esc(i.qty)+'</div></li>'}).join("")+'</ul></div>'+
@@ -342,7 +342,20 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     }
     return h+actHTML(c)+'</div></article>';
   }
-  function stOk(c){var v=state.st;if(v==="all")return true;if(v.indexOf("s:")===0)return srState(c)===v.slice(2);if(v==="n:any")return !!need(c);if(v==="n:done")return !!c.action;if(v.indexOf("n:")===0)return need(c)===v.slice(2);if(v==="a:any")return lvl(c)>=2;if(v==="a:over")return lvl(c)===3;if(v==="a:warn")return lvl(c)===2;if(v.indexOf("r:")===0)return c.rank<4&&(c.check||"")===v.slice(2);return c.typ===v.slice(2)}
+  // Refund requests: tell the platform within REPLY days after the goods are back.
+  var REPLY=2;
+  function arrived(c){if(!c.req||c.req==="-"||c.rank===4)return null;if(c.ret_arrived)return c.ret_arrived;
+    if(/จัดส่งสินค้าคืนสำเร็จ/.test(c.status||"")&&c.date)return c.date;
+    if(c.check&&c.checked_at)return String(c.checked_at).slice(0,10);
+    if(c.typ===TYPES[2])return"?";return null}
+  function urg2(c){var a=arrived(c);if(!a||c.action)return null;if(c.check==="ok"&&isPaid(c))return null;
+    if(a==="?")return {unk:true,left:-999};var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(a);if(!m)return null;var n=new Date();
+    var d=Math.round((Date.UTC(n.getFullYear(),n.getMonth(),n.getDate())-Date.UTC(+m[1],+m[2]-1,+m[3]))/86400000);return {left:REPLY-d,at:a}}
+  function urgHTML(c){var u=urg2(c);if(!u)return"";var act=c.check?(need(c)==="dispute"?"เปิดข้อพิพาท":"ยืนยันคืนเงิน"):"ให้คลังตรวจของ แล้วแจ้งแพลตฟอร์ม";
+    if(u.unk)return '<div class="days over">ด่วน ขอคืนเงิน · ของถึงร้านแล้ว (ไฟล์ไม่บอกวันที่) '+act+'ทันที</div>';
+    if(u.left<0)return '<div class="days over">ด่วน ขอคืนเงิน · เกินกำหนดแจ้ง '+(-u.left)+' วัน (ของถึง '+esc(dmy(u.at))+') '+act+'</div>';
+    return '<div class="days '+(u.left===0?'over':'warn')+'">ด่วน ขอคืนเงิน · '+(u.left===0?'ต้องแจ้งภายในวันนี้':'ต้องแจ้งภายใน '+u.left+' วัน')+' (ของถึง '+esc(dmy(u.at))+') '+act+'</div>'}
+  function stOk(c){var v=state.st;if(v==="all")return true;if(v==="u:any")return !!urg2(c);if(v.indexOf("s:")===0)return srState(c)===v.slice(2);if(v==="n:any")return !!need(c);if(v==="n:done")return !!c.action;if(v.indexOf("n:")===0)return need(c)===v.slice(2);if(v==="a:any")return lvl(c)>=2;if(v==="a:over")return lvl(c)===3;if(v==="a:warn")return lvl(c)===2;if(v.indexOf("r:")===0)return c.rank<4&&(c.check||"")===v.slice(2);return c.typ===v.slice(2)}
   function evDate(c){return c.req_date||c.date||""}
   function ageOk(c){var v=state.age;if(v==="all")return true;if(!lvl(c))return false;var d=daysOpen(c);return v==="0-4"?d<=4:v==="5-7"?(d>=5&&d<=7):v==="8+"?d>7:d>14}
   function whenOk(c){var e=evDate(c);if(state.days.length)return state.days.indexOf(e)>-1;return state.month==="all"||e.slice(0,7)===state.month}
@@ -363,6 +376,9 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     var pinN=state.cases.filter(function(c){return c.pinned&&inPlat(c)}).length;
     var typs=[];state.cases.forEach(function(c){if(inPlat(c)&&typs.indexOf(c.typ)<0)typs.push(c.typ)});
     var cnt=function(f){return state.cases.filter(function(c){return inPlat(c)&&f(c)}).length};
+    // counts shown in the status list respect the other filters, so the number always equals the cards listed
+    var cntF=function(f){return state.cases.filter(function(c){return inPlat(c)&&ageOk(c)&&whenOk(c)&&f(c)}).length};
+    var nU=cnt(function(c){return !!urg2(c)});
     var nOver=cnt(function(c){return lvl(c)===3}), nWarn=cnt(function(c){return lvl(c)===2});
     var ab=$("alertBox");
     if(nOver+nWarn&&state.st.indexOf("a:")!==0){ab.hidden=false;ab.className="alert "+(nOver?"over":"warn");
@@ -370,15 +386,15 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     else ab.hidden=true;
     var nD=cnt(function(c){return need(c)==="dispute"}),nC=cnt(function(c){return need(c)==="confirm"}),nR=cnt(function(c){return need(c)==="review"});
     var nb=$("needBox");
-    if(nD+nC&&state.st.indexOf("n:")!==0){nb.hidden=false;nb.className="alert "+(nD?"over":"warn");
-      nb.innerHTML='<span>'+(nD?'ต้องเปิดข้อพิพาท '+nD+' ใบ':'')+(nD&&nC?' · ':'')+(nC?'ต้องยืนยันคืนเงิน '+nC+' ใบ':'')+'</span><button type="button" id="needGo">ดูใบที่ต้องแจ้งในแพลตฟอร์ม</button>'}
+    if(nU+nD+nC&&state.st.indexOf("n:")!==0&&state.st!=="u:any"){nb.hidden=false;nb.className="alert "+(nU+nD?"over":"warn");
+      nb.innerHTML='<span>'+[nU?'ขอคืนเงิน ต้องแจ้งแพลตฟอร์มใน '+REPLY+' วันหลังได้ของ '+nU+' ใบ':'',nD?'ต้องเปิดข้อพิพาท '+nD+' ใบ':'',nC?'ต้องยืนยันคืนเงิน '+nC+' ใบ':''].filter(function(x){return x}).join(' · ')+'</span><button type="button" id="needGo">ดูใบด่วน</button>'}
     else nb.hidden=true;
     var tl=TYPES.concat(typs.filter(function(t){return TYPES.indexOf(t)<0})).filter(function(t){return cnt(function(c){return c.typ===t})>0||state.st==="t:"+t});
-    var G=[["",[["all","ทุกสถานะ ("+cnt(function(){return true})+")"]]],
-      ["งานที่ต้องทำ",[["n:dispute","ต้องเปิดข้อพิพาท ("+nD+")"],["n:confirm","ต้องยืนยันคืนเงิน ("+nC+")"],["n:review","คืนเงินอย่างเดียว รอแอดมินตรวจ ("+nR+")"],["n:done","แจ้งในแพลตฟอร์มแล้ว ("+cnt(function(c){return !!c.action})+")"],["a:any","เตือนทั้งหมด ("+(nOver+nWarn)+")"]]],
-      ["เทียบกับ SR",[["s:ok","SR ตรงครบ ("+cnt(function(c){return srState(c)==="ok"})+")"],["s:diff","SR ไม่ตรงกับแพลตฟอร์ม ("+cnt(function(c){return srState(c)==="diff"})+")"],["s:eye","มี SR ต้องดูด้วยตา ("+cnt(function(c){return srState(c)==="eye"})+")"],["s:none","ยังไม่มี SR ("+cnt(function(c){return srState(c)==="none"})+")"]]],
-      ["ประเภทรายการ",tl.map(function(t){return ["t:"+t,t+" ("+cnt(function(c){return c.typ===t})+")"]})],
-      ["ผลตรวจของคลัง",[["r:","ผลตรวจ: ยังไม่ตรวจ ("+cnt(function(c){return c.rank<4&&!c.check})+")"],["r:ok","ผลตรวจ: ได้ของครบ ("+cnt(function(c){return c.check==="ok"})+")"],["r:part","ผลตรวจ: ได้ของไม่ครบ ("+cnt(function(c){return c.check==="part"})+")"],["r:none","ผลตรวจ: ไม่ได้ของ ("+cnt(function(c){return c.check==="none"})+")"]]]];
+    var G=[["",[["all","ทุกสถานะ ("+cntF(function(){return true})+")"]]],
+      ["งานที่ต้องทำ",[["u:any","ด่วน: ขอคืนเงิน ต้องแจ้งใน "+REPLY+" วัน ("+cntF(function(c){return !!urg2(c)})+")"],["n:dispute","ต้องเปิดข้อพิพาท ("+cntF(function(c){return need(c)==="dispute"})+")"],["n:confirm","ต้องยืนยันคืนเงิน ("+cntF(function(c){return need(c)==="confirm"})+")"],["n:review","คืนเงินอย่างเดียว รอแอดมินตรวจ ("+cntF(function(c){return need(c)==="review"})+")"],["n:done","แจ้งในแพลตฟอร์มแล้ว ("+cntF(function(c){return !!c.action})+")"],["a:any","เตือนทั้งหมด ("+cntF(function(c){return lvl(c)>=2})+")"]]],
+      ["เทียบกับ SR",[["s:ok","SR ตรงครบ ("+cntF(function(c){return srState(c)==="ok"})+")"],["s:diff","SR ไม่ตรงกับแพลตฟอร์ม ("+cntF(function(c){return srState(c)==="diff"})+")"],["s:eye","มี SR ต้องดูด้วยตา ("+cntF(function(c){return srState(c)==="eye"})+")"],["s:none","ยังไม่มี SR ("+cntF(function(c){return srState(c)==="none"})+")"]]],
+      ["ประเภทรายการ",tl.map(function(t){return ["t:"+t,t+" ("+cntF(function(c){return c.typ===t})+")"]})],
+      ["ผลตรวจของคลัง",[["r:","ผลตรวจ: ยังไม่ตรวจ ("+cntF(function(c){return c.rank<4&&!c.check})+")"],["r:ok","ผลตรวจ: ได้ของครบ ("+cntF(function(c){return c.check==="ok"})+")"],["r:part","ผลตรวจ: ได้ของไม่ครบ ("+cntF(function(c){return c.check==="part"})+")"],["r:none","ผลตรวจ: ไม่ได้ของ ("+cntF(function(c){return c.check==="none"})+")"]]]];
     var opts=[];G.forEach(function(g){opts=opts.concat(g[1])});
 
     if(!opts.some(function(o){return o[0]===state.st}))state.st="all";
@@ -411,14 +427,14 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     var lab=[];
     if(state.age!=="all")lab.push(["age",AGES.filter(function(a){return a[0]===state.age})[0][1]]);
     if(state.days.length)lab.push(["day",state.days.length===1?"วันที่ "+dmy(state.days[0]):"เลือก "+state.days.length+" วัน"]);else if(state.month!=="all")lab.push(["month",MON[+state.month.slice(5,7)-1]+" "+(+state.month.slice(0,4)+543)]);
-    if(state.st!=="all")lab.push(["st",state.st==="a:any"?"เตือนทั้งหมด":state.st.indexOf("s:")===0?({ok:"SR ตรงครบ",diff:"SR ไม่ตรงกับแพลตฟอร์ม",eye:"มี SR ต้องดูด้วยตา",none:"ยังไม่มี SR"})[state.st.slice(2)]:state.st.indexOf("n:")===0?"แจ้งในแพลตฟอร์ม":state.st.indexOf("r:")===0?"ผลตรวจ":state.st.slice(2)]);
+    if(state.st!=="all")lab.push(["st",state.st==="u:any"?"ด่วน: ขอคืนเงิน":state.st==="a:any"?"เตือนทั้งหมด":state.st.indexOf("s:")===0?({ok:"SR ตรงครบ",diff:"SR ไม่ตรงกับแพลตฟอร์ม",eye:"มี SR ต้องดูด้วยตา",none:"ยังไม่มี SR"})[state.st.slice(2)]:state.st.indexOf("n:")===0?"แจ้งในแพลตฟอร์ม":state.st.indexOf("r:")===0?"ผลตรวจ":state.st.slice(2)]);
     $("act").innerHTML=lab.map(function(l){return '<button type="button" data-clear="'+l[0]+'">'+esc(l[1])+' ✕</button>'}).join("");
     var searching=!!state.q.trim();
     var pool=searching?state.cases:(state.tab==="pin"||byStatus)?state.cases.filter(inPlat):work;
     var show=pool.filter(function(c){var isDone=!!c.check;
       var inTab=byStatus?true:(state.tab==="pin"?!!c.pinned:(state.tab==="todo"?(!isDone||state.touched[c.id]):isDone));
       return searching?qMatch(c):(inTab&&match(c))});
-    var nd=function(c){var n=need(c);return n==="dispute"?2:n==="confirm"?1:0};
+    var nd=function(c){var n=need(c);return (urg2(c)?4:0)+(n==="dispute"?2:n==="confirm"?1:0)};
     show.sort(function(a,b){return (b.pinned?1:0)-(a.pinned?1:0)||nd(b)-nd(a)||Math.max(lvl(b),1)-Math.max(lvl(a),1)||((lvl(a)>=2&&lvl(b)>=2)?daysOpen(b)-daysOpen(a):0)||a.sort-b.sort});
     var ids={};show=show.filter(function(c){if(ids[c.id])return false;ids[c.id]=1;return true});
     if(searching)$("act").innerHTML='<button type="button" data-clear="q">ค้นหาทุกแท็บ: เจอ '+show.length+' ใบ ✕</button>';
@@ -477,7 +493,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
   $("tabDone").addEventListener("click",function(){go("done")});
   $("tabPin").addEventListener("click",function(){go("pin")});
   $("needBox").addEventListener("click",function(e){if(!e.target.closest||!e.target.closest("#needGo"))return;state.st=nFirst();state.touched={};render();$("st").value=state.st});
-  function nFirst(){return state.cases.some(function(c){return need(c)==="dispute"})?"n:dispute":"n:confirm"}
+  function nFirst(){return state.cases.some(function(c){return !!urg2(c)})?"u:any":state.cases.some(function(c){return need(c)==="dispute"})?"n:dispute":"n:confirm"}
 
   $("alertBox").addEventListener("click",function(e){if(!e.target.closest||!e.target.closest("#alertGo"))return;state.st="a:any";state.touched={};render();$("st").value="a:any"});
   $("st").addEventListener("change",function(e){state.st=e.target.value;state.touched={};e.target.blur();render()});
