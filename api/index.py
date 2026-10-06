@@ -673,6 +673,19 @@ def run_import(files, cards, staff, sr_docs):
 _con = None
 
 
+def db_url():
+    """Find the Postgres connection string whatever name the Vercel storage integration gave it
+    (DATABASE_URL, POSTGRES_URL, or a custom prefix such as STORAGE_DATABASE_URL). Pooled URLs first."""
+    for k in ('DATABASE_URL', 'POSTGRES_URL'):
+        if os.environ.get(k, '').startswith('postgres'):
+            return os.environ[k]
+    cands = sorted((k, v) for k, v in os.environ.items() if v.startswith(('postgres://', 'postgresql://')))
+    for k, v in cands:
+        if 'UNPOOLED' not in k and 'NON_POOLING' not in k and 'NO_SSL' not in k:
+            return v
+    return cands[0][1] if cands else ''
+
+
 def con():
     global _con
     if _con is not None:
@@ -682,7 +695,7 @@ def con():
         except Exception:
             _con = None
     import pg8000.native
-    url = os.environ.get('DATABASE_URL') or os.environ.get('POSTGRES_URL') or os.environ.get('DATABASE_URL_UNPOOLED') or ''
+    url = db_url()
     if not url:
         raise RuntimeError('NO_DB')
     u = urlparse(url)
@@ -868,7 +881,9 @@ class handler(BaseHTTPRequestHandler):
             return self._send(404, {'error': 'not_found'})
         except RuntimeError as e:
             if str(e) == 'NO_DB':
-                return self._send(503, {'error': 'no_db'})
+                # names only, never values: helps see whether a database was connected under another name
+                seen = sorted(k for k in os.environ if any(t in k.upper() for t in ('POSTGRES', 'DATABASE', 'PGHOST', 'NEON', 'SUPABASE')))
+                return self._send(503, {'error': 'no_db', 'db_vars_seen': seen})
             return self._send(500, {'error': 'server', 'detail': str(e)[:200]})
         except Exception as e:
             return self._send(500, {'error': 'server', 'detail': (type(e).__name__ + ': ' + str(e))[:300]})
