@@ -1,0 +1,12 @@
+# never commit real exports: they contain buyer names, phones and addresses
+*.xlsx
+*.xls
+*.csv
+*.CSV
+*.json.bak
+backup*.json
+data/
+.vercel
+.env*
+__pycache__/
+.DS_Store
