@@ -53,6 +53,10 @@ def read_xlsx(b):
     return h, [dict(zip(h, r)) for r in rows[1:] if any(v not in (None, '') for v in r)]
 
 
+# every card has exactly one of these statuses
+TYPES = ['ขอคืนสินค้า - รอลูกค้าส่งของกลับ', 'ขอคืนสินค้า - ของกำลังส่งกลับ', 'ขอคืนสินค้า - ของถึงร้านแล้ว', 'คืนเงินอย่างเดียว - ไม่มีของกลับ',
+         'ตีกลับ - ของกำลังกลับ', 'ตีกลับ - ของถึงร้านแล้ว', 'ตีกลับ - ยังไม่ทราบว่าถึงร้าน', 'ส่งแล้วยกเลิก - ไม่มีพัสดุตีกลับ']
+
 KIND_LABEL = {
     'sh_rr': 'Shopee คืนเงิน/คืนสินค้า', 'sh_fd': 'Shopee จัดส่งไม่สำเร็จ', 'sh_cc': 'Shopee ยกเลิก',
     'tt_od': 'TikTok คำสั่งซื้อที่ยกเลิก', 'tt_rt': 'TikTok คืนเงิน/คืนสินค้า',
@@ -109,10 +113,10 @@ def build_sh_rr(rows, st):
             rank, urg, typ = 1, 'ด่วนมาก', 'ขอคืนสินค้า - ของกำลังส่งกลับ'
             todo = 'เฝ้ารับพัสดุ เปิดตรวจทันทีที่ถึง ถ้าของไม่ครบ/ไม่ใช่ของร้าน แจ้งแอดมินวันนั้นเลย'
         elif lg == 'จัดส่งสินค้าคืนสำเร็จ':
-            rank, urg, typ = 2, 'ด่วน', 'ขอคืนสินค้า - ขนส่งแจ้งส่งคืนถึงร้านแล้ว'
+            rank, urg, typ = 2, 'ด่วน', 'ขอคืนสินค้า - ของถึงร้านแล้ว'
             todo = 'ค้นหาพัสดุขาคืน ตรวจว่าได้ของจริง ครบ และสภาพดี'
         else:
-            rank, urg, typ = 4, 'เพื่อทราบ', 'คืนเงินอย่างเดียว - ลูกค้าไม่ส่งของคืน'
+            rank, urg, typ = 4, 'เพื่อทราบ', 'คืนเงินอย่างเดียว - ไม่มีของกลับ'
             todo = 'ไม่มีของกลับ คลังไม่ต้องหา (แอดมินตรวจเหตุผล/ยื่นข้อพิพาท)'
         req = str(r['หมายเลขคำขอคืนเงิน/คืนสินค้า'])
         cid = 'rr-' + req
@@ -141,7 +145,7 @@ def build_sh_fd(rows, st):
         moving = s != 'จัดส่งคืนผู้ขายแล้ว'
         cid = 'fd-' + str(r['หมายเลขคำสั่งซื้อ'])
         if cid not in cards:
-            cards[cid] = _card(rank=3, urg='ตรวจ', typ='ส่งแล้วโดนยกเลิก - ' + ('ของกำลังตีกลับ' if moving else 'ขนส่งแจ้งคืนถึงร้านแล้ว'),
+            cards[cid] = _card(rank=3, urg='ตรวจ', typ='ตีกลับ - ' + ('ของกำลังกลับ' if moving else 'ของถึงร้านแล้ว'),
                                platform='Shopee', order=str(r['หมายเลขคำสั่งซื้อ']), out_track=str(r.get('*หมายเลขติดตามพัสดุ') or ''),
                                ret_track='(ใช้เลขเดิม)', status=s, date=s10(r.get('เวลาส่งสินค้า')), ship_date=s10(r.get('เวลาส่งสินค้า')),
                                reason='จัดส่งไม่สำเร็จ', plat_amt=0.0, items=[],
@@ -168,7 +172,7 @@ def build_sh_cc(rows, st, failed_orders):
             continue
         cid = 'fd-' + o
         if cid not in cards:
-            cards[cid] = _card(rank=4, urg='เพื่อทราบ', typ='ส่งแล้วโดนยกเลิก - ไม่อยู่ในรายการตีกลับ', platform='Shopee', order=o,
+            cards[cid] = _card(rank=4, urg='เพื่อทราบ', typ='ส่งแล้วยกเลิก - ไม่มีพัสดุตีกลับ', platform='Shopee', order=o,
                                out_track=str(r.get('*หมายเลขติดตามพัสดุ') or ''), status='ยกเลิกแล้ว', date=s10(r.get('เวลาส่งสินค้า')),
                                ship_date=s10(r.get('เวลาส่งสินค้า')), reason=str(r.get('เหตุผลในการยกเลิกคำสั่งซื้อ') or '').replace('<br>', ' '),
                                plat_amt=0.0, items=[], todo='แอดมินตรวจ: น่าจะพัสดุสูญหาย/ได้ค่าชดเชย ของอาจไม่กลับ')
@@ -195,7 +199,7 @@ def build_tt_od(rows, st):
         reason = str(r.get('Cancel Reason') or '')
         if cid not in cards:
             cards[cid] = _card(rank=3, urg='ตรวจ',
-                               typ='ส่งแล้วโดนยกเลิก - จัดส่งไม่สำเร็จ (TikTok)' if 'จัดส่ง' in reason else 'ส่งแล้วโดนยกเลิก - ' + (reason or 'ยกเลิก') + ' (TikTok)',
+                               typ='ตีกลับ - ยังไม่ทราบว่าถึงร้าน',
                                platform='TikTok', order=o, out_track=str(r.get('Tracking ID') or ''), ret_track='(ใช้เลขเดิม)',
                                status='ยกเลิกแล้ว: ' + reason, date=iso_dmy(r.get('Cancelled Time')), cancel_date=iso_dmy(r.get('Cancelled Time')),
                                ship_date=iso_dmy(r.get('Shipped Time')),
@@ -226,11 +230,11 @@ def build_tt_rt(rows, st):
             st['skip']['คำขอถูกปฏิเสธ/ลูกค้ายกเลิก'] += 1
             continue
         if rt == 'Refund only':
-            rank, urg, typ, todo = 4, 'เพื่อทราบ', 'คืนเงินอย่างเดียว - ลูกค้าไม่ส่งของคืน', 'ไม่มีของกลับ คลังไม่ต้องหา (แอดมินตรวจเหตุผล/ยื่นข้อพิพาท)'
+            rank, urg, typ, todo = 4, 'เพื่อทราบ', 'คืนเงินอย่างเดียว - ไม่มีของกลับ', 'ไม่มีของกลับ คลังไม่ต้องหา (แอดมินตรวจเหตุผล/ยื่นข้อพิพาท)'
         elif s == 'Completed' and not trk:
-            rank, urg, typ, todo = 4, 'เพื่อทราบ', 'คืนเงินอย่างเดียว - ลูกค้าไม่ส่งของคืน', 'TikTok คืนเงินโดยไม่มีพัสดุส่งคืน คลังไม่ต้องหา (แอดมินตรวจ)'
+            rank, urg, typ, todo = 4, 'เพื่อทราบ', 'คืนเงินอย่างเดียว - ไม่มีของกลับ', 'TikTok คืนเงินโดยไม่มีพัสดุส่งคืน คลังไม่ต้องหา (แอดมินตรวจ)'
         elif s == 'Completed':
-            rank, urg, typ, todo = 2, 'ด่วน', 'ขอคืนสินค้า - คืนเงินแล้ว มีพัสดุส่งคืน', 'ค้นหาพัสดุขาคืน ตรวจว่าได้ของจริง ครบ และสภาพดี'
+            rank, urg, typ, todo = 2, 'ด่วน', 'ขอคืนสินค้า - ของถึงร้านแล้ว', 'ค้นหาพัสดุขาคืน ตรวจว่าได้ของจริง ครบ และสภาพดี'
         elif trk:
             rank, urg, typ, todo = 1, 'ด่วนมาก', 'ขอคืนสินค้า - ของกำลังส่งกลับ', 'เฝ้ารับพัสดุ เปิดตรวจทันทีที่ถึง ถ้าของไม่ครบ/ไม่ใช่ของร้าน แจ้งแอดมินวันนั้นเลย'
         else:
@@ -268,9 +272,9 @@ def build_lz_rt(rows, st):
         trk = str(r.get('Tracking Number') or '')
         refunded = any((x.get('Status') or '') == 'Refunded' for x in rs)
         if lg:
-            rank, urg, typ, todo = 2, 'ด่วน', 'ขอคืนสินค้า - ขนส่งแจ้งส่งคืนถึงร้านแล้ว', 'ค้นหาพัสดุขาคืน ตรวจว่าได้ของจริง ครบ และสภาพดี'
+            rank, urg, typ, todo = 2, 'ด่วน', 'ขอคืนสินค้า - ของถึงร้านแล้ว', 'ค้นหาพัสดุขาคืน ตรวจว่าได้ของจริง ครบ และสภาพดี'
         else:
-            rank, urg, typ, todo = 4, 'เพื่อทราบ', 'คืนเงินอย่างเดียว - ลูกค้าไม่ส่งของคืน', 'ไม่มีของกลับ คลังไม่ต้องหา (แอดมินตรวจเหตุผล/ยื่นข้อพิพาท)'
+            rank, urg, typ, todo = 4, 'เพื่อทราบ', 'คืนเงินอย่างเดียว - ไม่มีของกลับ', 'ไม่มีของกลับ คลังไม่ต้องหา (แอดมินตรวจเหตุผล/ยื่นข้อพิพาท)'
         items = collections.OrderedDict()
         for x in rs:
             sku = str(x.get('Seller SKU ID') or '')
@@ -309,7 +313,7 @@ def build_lz_od(rows, st):
             k = (str(x.get('itemName') or x.get('sellerSku') or ''), str(x.get('variation') or x.get('sellerSku') or '-'))
             items[k] = items.get(k, 0) + 1
         d = iso_lz(r.get('updateTime'))
-        cards['lf-' + o] = _card(rank=3, urg='ตรวจ', typ='ส่งแล้วโดนยกเลิก - ' + ('ขนส่งแจ้งคืนถึงร้านแล้ว' if back else status), platform='Lazada',
+        cards['lf-' + o] = _card(rank=3, urg='ตรวจ', typ='ตีกลับ - ' + ('ของถึงร้านแล้ว' if back else 'ยังไม่ทราบว่าถึงร้าน'), platform='Lazada',
                                  order=o, out_track=str(r.get('trackingCode') or r.get('cdTrackingCode') or r.get('trackingCodeFM') or ''),
                                  ret_track='(ใช้เลขเดิม)', status=status, date=d, cancel_date=d, ship_date=iso_lz(r.get('createTime')),
                                  reason=str(r.get('buyerFailedDeliveryReason') or ''), todo='ค้นหาพัสดุตีกลับ ตรวจว่าได้ของจริง ครบ แล้วเก็บเข้าสต็อก',
@@ -601,7 +605,7 @@ def run_import(files, cards, staff, sr_docs):
     new_cards = collections.OrderedDict((k, dict(v)) for k, v in cards.items())
     new_sr = dict(sr_docs)
     rep, seen_md5 = [], {}
-    failed_orders = {c['order'] for cid, c in cards.items() if cid.startswith('fd-') and 'ไม่อยู่ในรายการตีกลับ' not in c.get('typ', '')}
+    failed_orders = {c['order'] for cid, c in cards.items() if cid.startswith('fd-') and 'ไม่มีพัสดุตีกลับ' not in c.get('typ', '') and 'ไม่อยู่ในรายการตีกลับ' not in c.get('typ', '')}
     for _, name, kind, rows, md5 in parsed:
         st = dict(rows=0, card_rows=0, skip=collections.Counter())
         if md5 in seen_md5:
@@ -657,6 +661,8 @@ def run_import(files, cards, staff, sr_docs):
     dups('เลขพัสดุขาไป', lambda c: c.get('out_track'))
     dups('เลขพัสดุขาคืน', lambda c: c.get('ret_track'))
     for cid, c in new_cards.items():
+        if c.get('typ') not in TYPES:
+            warn.append('การ์ด %s มีสถานะที่ไม่รู้จัก: %s' % (cid, c.get('typ')))
         if not c.get('order') or not c.get('items'):
             warn.append('การ์ด %s ไม่มีรหัสคำสั่งซื้อหรือรายการสินค้า' % cid)
     states = collections.Counter(v['sr_state'] for v in sr_by_card.values())

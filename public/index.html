@@ -202,13 +202,15 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
 
   <p class="srh" id="srh">เทียบกับ SR (เอกสารรับของเข้าสต็อก) · ยึดข้อมูลแพลตฟอร์มเป็นหลัก</p>
   <div class="srbar" id="srbar" role="group" aria-label="ผลเทียบกับ SR"></div>
-  <div class="stbox"><label class="lbl" for="st">สถานะ</label><select class="sel" id="st"><option value="all">ทุกสถานะ</option></select></div>
+  <div class="stbox"><label class="lbl" for="st">สถานะรายการ (1 ใบมี 1 สถานะ)</label><select class="sel" id="st"><option value="all">ทุกสถานะ</option></select></div>
   <details class="fbox" id="fbox">
     <summary><span>ตัวกรอง</span><span class="n" id="fcount" hidden></span></summary>
     <div class="fbody">
       <div class="fgrp"><span class="lbl">ค้างมาแล้วกี่วัน (นับจากวันขอคืน/วันยกเลิก)</span><div class="chips" id="ages" role="group" aria-label="ค้างมาแล้วกี่วัน (นับจากวันขอคืน/วันยกเลิก)"></div></div>
       <div class="fgrp"><span class="lbl">เดือนที่เกิดเรื่อง</span><div class="chips" id="months" role="group" aria-label="เดือนที่เกิดเรื่อง"></div></div>
       <div class="fgrp"><span class="lbl" id="daysLbl">วันที่เกิดเรื่อง (แตะเลือกได้หลายวัน)</span><div class="chips" id="days" role="group" aria-labelledby="daysLbl"></div><button class="clr" type="button" id="dayClr" hidden>ล้างวันที่เลือก</button></div>
+      <div class="fgrp"><span class="lbl">ผลตรวจของคลัง</span><div class="chips" id="resf" role="group" aria-label="ผลตรวจของคลัง"></div></div>
+      <div class="fgrp"><span class="lbl">งานแจ้งแพลตฟอร์ม (แอดมิน)</span><div class="chips" id="admf" role="group" aria-label="งานแจ้งแพลตฟอร์ม"></div></div>
       <button class="clr" type="button" id="clrAll">ล้างตัวกรองทั้งหมด</button>
     </div>
   </details>
@@ -253,8 +255,14 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
   var PLATS=["Shopee","TikTok","Lazada"];
   var PIN_SVG='<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.2 1.2l4.6 4.6-1.3 1.3-.9-.3-2.5 2.5.3 3-1.3 1.3-2.9-2.9L2.4 14.5 1.5 13.6l3.8-3.8L2.4 6.9l1.3-1.3 3 .3 2.5-2.5-.3-.9z"/></svg>';
   function pinBtn(c){return state.canWrite?'<button class="pin" type="button" data-act="pin" aria-pressed="'+(!!c.pinned)+'">'+PIN_SVG+(c.pinned?"ปักอยู่":"ปักหมุด")+"</button>":""}
-  var AGES=[["all","ทุกช่วง"],["0-4","0–4 วัน"],["5-7","5–7 วัน (เตือน)"],["8+","เกิน 7 วัน"],["15+","เกิน 14 วัน"]];
-  var state={tab:"todo",plat:"all",st:"all",age:"all",month:"all",days:[],q:"",cases:[],canWrite:true,touched:{},busy:{},open:{},pend:null,loaded:false,meta:null};
+  var AGES=[["all","ทุกช่วง"],["0-4","0–4 วัน"],["5-7","5–7 วัน"],["8-14","8–14 วัน"],["15+","15 วันขึ้นไป"]];
+  // One status per card. Old names from earlier imports are mapped to these.
+  var TYPES=["ขอคืนสินค้า - รอลูกค้าส่งของกลับ","ขอคืนสินค้า - ของกำลังส่งกลับ","ขอคืนสินค้า - ของถึงร้านแล้ว","คืนเงินอย่างเดียว - ไม่มีของกลับ","ตีกลับ - ของกำลังกลับ","ตีกลับ - ของถึงร้านแล้ว","ตีกลับ - ยังไม่ทราบว่าถึงร้าน","ส่งแล้วยกเลิก - ไม่มีพัสดุตีกลับ"];
+  var OLD={"ขอคืนสินค้า - ขนส่งแจ้งส่งคืนถึงร้านแล้ว":2,"ขอคืนสินค้า - คืนเงินแล้ว มีพัสดุส่งคืน":2,"คืนเงินอย่างเดียว - ลูกค้าไม่ส่งของคืน":3,"ส่งแล้วโดนยกเลิก - ของกำลังตีกลับ":4,"ส่งแล้วโดนยกเลิก - ขนส่งแจ้งคืนถึงร้านแล้ว":5,"ส่งแล้วโดนยกเลิก - ไม่อยู่ในรายการตีกลับ":7};
+  function canon(t){t=String(t||"");if(TYPES.indexOf(t)>-1)return t;if(t in OLD)return TYPES[OLD[t]];if(t.indexOf("ส่งแล้วโดนยกเลิก")===0)return TYPES[6];return t}
+  var RESF=[["all","ทุกผลตรวจ"],["ok","ได้ของครบ"],["part","ได้ของไม่ครบ"],["none","ไม่ได้ของ"]];
+  var ADMF=[["all","ทั้งหมด"],["dispute","ต้องเปิดข้อพิพาท"],["confirm","ต้องยืนยันคืนเงิน"],["review","คืนเงินอย่างเดียว รอตรวจ"],["done","แจ้งแพลตฟอร์มแล้ว"]];
+  var state={tab:"todo",plat:"all",st:"all",sr:"all",res:"all",adm:"all",warn:false,age:"all",month:"all",days:[],q:"",cases:[],canWrite:true,touched:{},busy:{},open:{},pend:null,loaded:false,meta:null};
   var uid=null, TOKEN=null, ME=null;
   try{TOKEN=localStorage.getItem("rc_token")}catch(_){}
   function api(a,body){var o={method:body?"POST":"GET",headers:{}};if(TOKEN)o.headers.Authorization="Bearer "+TOKEN;
@@ -311,7 +319,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     var total=c.items.reduce(function(a,i){return a+(+i.qty||0)},0);
     var isFd=c.req==="-";
     var h='<article class="card u'+c.rank+(c.pinned?' pinned':'')+'" data-id="'+esc(c.id)+'">'+
-      '<div class="card-h"><span class="urg">'+esc(c.urg)+'</span><span>'+esc(c.typ.split(" - ")[1]||c.typ)+'</span><span class="pf">'+esc(c.platform||"")+'</span>'+pinBtn(c)+'</div><div class="card-b">'+daysHTML(c)+
+      '<div class="card-h"><span class="urg">'+esc(c.urg)+'</span><span>'+esc(c.typ)+'</span><span class="pf">'+esc(c.platform||"")+'</span>'+pinBtn(c)+'</div><div class="card-b">'+daysHTML(c)+
       '<div><span class="lbl">เลขพัสดุบนกล่อง</span><div class="big">'+(boxNo(c)?hl(boxNo(c)):'<span style="font-family:var(--f);font-size:18px;color:var(--muted)">ยังไม่มีเลขพัสดุ</span>')+'</div></div>'+
       '<div><span class="lbl">ของในกล่อง รวม '+total+' ชิ้น</span><ul class="items">'+
       c.items.map(function(i){return '<li><div><div class="v">'+esc(i.var&&i.var!=="-"?i.var:i.name)+'</div><div class="n">'+esc(i.var&&i.var!=="-"?i.name:"")+'</div></div><div class="q">×'+esc(i.qty)+'</div></li>'}).join("")+'</ul></div>'+
@@ -338,14 +346,19 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     }
     return h+actHTML(c)+'</div></article>';
   }
-  function stOk(c){var v=state.st;if(v==="all")return true;if(v.indexOf("s:")===0)return srState(c)===v.slice(2);if(v==="n:any")return !!need(c);if(v==="n:done")return !!c.action;if(v.indexOf("n:")===0)return need(c)===v.slice(2);if(v==="a:any")return lvl(c)>=2;if(v==="a:over")return lvl(c)===3;if(v==="a:warn")return lvl(c)===2;if(v.indexOf("r:")===0)return c.rank<4&&(c.check||"")===v.slice(2);return c.typ===v.slice(2)}
+  function stOk(c){return state.st==="all"||c.typ===state.st.slice(2)}
+  function srOk(c){return state.sr==="all"||srState(c)===state.sr}
+  function resOk(c){return state.res==="all"||(c.rank<4&&c.check===state.res)}
+  function admOk(c){var v=state.adm;return v==="all"||(v==="done"?!!c.action:need(c)===v)}
+  function warnOk(c){return !state.warn||lvl(c)>=2}
+  function anyF(){return state.st!=="all"||state.sr!=="all"||state.res!=="all"||state.adm!=="all"||state.warn||state.age!=="all"||state.month!=="all"||state.days.length>0}
   function evDate(c){return c.req_date||c.date||""}
-  function ageOk(c){var v=state.age;if(v==="all")return true;if(!lvl(c))return false;var d=daysOpen(c);return v==="0-4"?d<=4:v==="5-7"?(d>=5&&d<=7):v==="8+"?d>7:d>14}
+  function ageOk(c){var v=state.age;if(v==="all")return true;if(!lvl(c))return false;var d=daysOpen(c);return v==="0-4"?d<=4:v==="5-7"?(d>=5&&d<=7):v==="8-14"?(d>=8&&d<=14):d>=15}
   function whenOk(c){var e=evDate(c);if(state.days.length)return state.days.indexOf(e)>-1;return state.month==="all"||e.slice(0,7)===state.month}
-  function nFilters(){return (state.st!=="all")+(state.age!=="all")+((state.month!=="all"||state.days.length)?1:0)}
+  function nFilters(){return (state.age!=="all")+((state.month!=="all"||state.days.length)?1:0)+(state.res!=="all")+(state.adm!=="all")}
   // typing in the search box looks through EVERY card: all tabs, all filters, admin cards too
   function qMatch(c){var q=state.q.trim().toUpperCase().replace(/\s+/g,"");if(!q)return true;return [c.order,c.out_track,c.req,c.ret_track].join(" ").toUpperCase().indexOf(q)>-1||c.items.map(function(i){return i.var+" "+i.name}).join(" ").toUpperCase().replace(/\s+/g,"").indexOf(q)>-1}
-  function match(c){if(state.plat!=="all"&&c.platform!==state.plat)return false;if(!stOk(c)||!ageOk(c)||!whenOk(c))return false;var q=state.q.trim().toUpperCase();if(!q)return true;return [c.order,c.out_track,c.req,c.ret_track].concat(c.items.map(function(i){return i.var+" "+i.name})).join(" ").toUpperCase().indexOf(q)>-1}
+  function match(c){if(state.plat!=="all"&&c.platform!==state.plat)return false;return stOk(c)&&srOk(c)&&resOk(c)&&admOk(c)&&warnOk(c)&&ageOk(c)&&whenOk(c)}
   function render(){
     var inPlat=function(c){return state.plat==="all"||c.platform===state.plat};
     var allWork=state.cases.filter(function(c){return c.rank<4});
@@ -361,19 +374,22 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     var cnt=function(f){return state.cases.filter(function(c){return inPlat(c)&&f(c)}).length};
     var nOver=cnt(function(c){return lvl(c)===3}), nWarn=cnt(function(c){return lvl(c)===2});
     var ab=$("alertBox");
-    if(nOver+nWarn&&state.st.indexOf("a:")!==0){ab.hidden=false;ab.className="alert "+(nOver?"over":"warn");
+    if(nOver+nWarn&&!state.warn){ab.hidden=false;ab.className="alert "+(nOver?"over":"warn");
       ab.innerHTML='<span>'+(nOver?'เกิน '+LIMIT+' วันแล้วยังไม่ได้ของครบ '+nOver+' ใบ':'')+(nOver&&nWarn?' · ':'')+(nWarn?'เกิน '+WARN+' วัน ใกล้ครบกำหนด '+nWarn+' ใบ':'')+'</span><button type="button" id="alertGo">ดูใบที่เตือน</button>'}
     else ab.hidden=true;
     var nD=cnt(function(c){return need(c)==="dispute"}),nC=cnt(function(c){return need(c)==="confirm"}),nR=cnt(function(c){return need(c)==="review"});
     var nb=$("needBox");
-    if(nD+nC&&state.st.indexOf("n:")!==0){nb.hidden=false;nb.className="alert "+(nD?"over":"warn");
+    if(nD+nC&&state.adm==="all"){nb.hidden=false;nb.className="alert "+(nD?"over":"warn");
       nb.innerHTML='<span>'+(nD?'ต้องเปิดข้อพิพาท '+nD+' ใบ':'')+(nD&&nC?' · ':'')+(nC?'ต้องยืนยันคืนเงิน '+nC+' ใบ':'')+'</span><button type="button" id="needGo">ดูใบที่ต้องแจ้งในแพลตฟอร์ม</button>'}
     else nb.hidden=true;
-    var opts=[["all","ทุกสถานะ ("+cnt(function(){return true})+")"],["n:dispute","ต้องเปิดข้อพิพาท ("+nD+")"],["n:confirm","ต้องยืนยันคืนเงิน ("+nC+")"],["n:review","คืนเงินอย่างเดียว รอแอดมินตรวจ ("+nR+")"],["n:done","แจ้งในแพลตฟอร์มแล้ว ("+cnt(function(c){return !!c.action})+")"],["a:any","เตือนทั้งหมด ("+(nOver+nWarn)+")"],["s:ok","SR ตรงครบ ("+cnt(function(c){return srState(c)==="ok"})+")"],["s:diff","SR ไม่ตรงกับแพลตฟอร์ม ("+cnt(function(c){return srState(c)==="diff"})+")"],["s:eye","มี SR ต้องดูด้วยตา ("+cnt(function(c){return srState(c)==="eye"})+")"],["s:none","ยังไม่มี SR ("+cnt(function(c){return srState(c)==="none"})+")"]].concat(typs.map(function(t){return ["t:"+t,t+" ("+cnt(function(c){return c.typ===t})+")"]}),
-      [["r:","ผลตรวจ: ยังไม่ตรวจ ("+cnt(function(c){return c.rank<4&&!c.check})+")"],["r:ok","ผลตรวจ: ได้ของครบ ("+cnt(function(c){return c.check==="ok"})+")"],["r:part","ผลตรวจ: ได้ของไม่ครบ ("+cnt(function(c){return c.check==="part"})+")"],["r:none","ผลตรวจ: ไม่ได้ของ ("+cnt(function(c){return c.check==="none"})+")"]]);
+    var others=typs.filter(function(t){return TYPES.indexOf(t)<0});
+    var opts=[["all","ทุกสถานะ ("+cnt(function(){return true})+")"]].concat(TYPES.concat(others).map(function(t){return ["t:"+t,t+" ("+cnt(function(c){return c.typ===t})+")"]}).filter(function(o){return !/\(0\)$/.test(o[1])||o[0]===state.st}));
+
     if(!opts.some(function(o){return o[0]===state.st}))state.st="all";
     $("srbar").innerHTML=[["ok","g","ตรงครบ"],["diff","r","SR ไม่ตรง"],["eye","o","ต้องดูด้วยตา"],["none","n","ยังไม่มี SR"]].map(function(b){
-      return '<button class="srbtn '+b[1]+'" type="button" data-sr="'+b[0]+'" aria-pressed="'+(state.st==="s:"+b[0])+'"><b>'+cnt(function(c){return srState(c)===b[0]})+'</b><span>'+b[2]+'</span></button>'}).join("");
+      return '<button class="srbtn '+b[1]+'" type="button" data-sr="'+b[0]+'" aria-pressed="'+(state.sr===b[0])+'"><b>'+cnt(function(c){return srState(c)===b[0]})+'</b><span>'+b[2]+'</span></button>'}).join("");
+    $("resf").innerHTML=RESF.map(function(a){return '<button class="chip" type="button" data-res="'+a[0]+'" aria-pressed="'+(state.res===a[0])+'">'+a[1]+(a[0]==="all"?'':' ('+cnt(function(c){return c.rank<4&&c.check===a[0]})+')')+'</button>'}).join("");
+    $("admf").innerHTML=ADMF.map(function(a){return '<button class="chip" type="button" data-adm="'+a[0]+'" aria-pressed="'+(state.adm===a[0])+'">'+a[1]+(a[0]==="all"?'':' ('+cnt(function(c){return a[0]==="done"?!!c.action:need(c)===a[0]})+')')+'</button>'}).join("");
     var M=state.meta,O=M&&M.orph?M.orph.filter(function(o){return state.plat==="all"||o.platform===state.plat}):[];
     var oq=state.q.trim().toUpperCase().replace(/\s+/g,""); if(oq)O=O.filter(function(o){return (o.order+" "+o.sr).toUpperCase().indexOf(oq)>-1});
     var on={};O.forEach(function(o){on[o.order]=1});
@@ -381,12 +397,12 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     $("orphSum").textContent="SR รับของเข้าแล้ว แต่ไม่มีคำสั่งซื้อในหน้านี้ ("+Object.keys(on).length+" คำสั่งซื้อ) แตะเพื่อเปิด/ปิด";
     $("orphList").innerHTML=O.slice(0,400).map(function(o){return '<div class="orow"><span class="m">'+esc(o.order)+'</span><span>'+esc(o.platform)+' · '+esc(o.sr)+' วันที่ '+esc(o.date)+(o.no?' บรรทัด '+esc(o.no):'')+'</span><span>'+esc(o.code)+' · '+esc(o.name)+'</span>'+(o.no?'<span><b>'+esc(o.qty)+' '+esc(o.unit)+'</b> = '+baht(o.amt)+(o.shared>1?' · ใช้ร่วม '+o.shared+' คำสั่งซื้อ':'')+(o.hint?' · '+esc(o.hint):'')+'</span>':'')+'</div>'}).join("");
     var sel=$("st"); if(document.activeElement!==sel){sel.innerHTML=opts.map(function(o){return '<option value="'+esc(o[0])+'">'+esc(o[1])+'</option>'}).join("");sel.value=state.st}
-    $("tabPin").textContent="ปักหมุด ("+pinN+")"; $("tabPin").setAttribute("aria-pressed",state.tab==="pin"&&state.st==="all");
+    $("tabPin").textContent="ปักหมุด ("+pinN+")"; $("tabPin").setAttribute("aria-pressed",state.tab==="pin"&&!anyF());
     $("progText").textContent=state.loaded?("ทั้งหมด "+(work.length+info.length)+" ใบ = คลังตรวจ "+work.length+" (ตรวจแล้ว "+done+") + แอดมิน "+info.length):"กำลังโหลด…";
     $("progFill").style.width=(work.length?Math.round(done/work.length*100):0)+"%";
     $("tabTodo").textContent="ยังไม่ตรวจ ("+(work.length-done)+")"; $("tabDone").textContent="ตรวจแล้ว ("+done+")";
-    $("tabTodo").setAttribute("aria-pressed",state.tab==="todo"&&state.st==="all"); $("tabDone").setAttribute("aria-pressed",state.tab==="done"&&state.st==="all");
-    var byStatus=state.st!=="all"||state.age!=="all"||state.month!=="all"||state.days.length>0;
+    $("tabTodo").setAttribute("aria-pressed",state.tab==="todo"&&!anyF()); $("tabDone").setAttribute("aria-pressed",state.tab==="done"&&!anyF());
+    var byStatus=anyF();
     $("ages").innerHTML=AGES.map(function(a){var n=a[0]==="all"?"":" ("+state.cases.filter(function(c){var k=state.age;state.age=a[0];var ok=inPlat(c)&&ageOk(c);state.age=k;return ok}).length+")";
       return '<button class="chip" type="button" data-age="'+a[0]+'" aria-pressed="'+(state.age===a[0])+'">'+a[1]+n+'</button>'}).join("");
     var ms={};state.cases.forEach(function(c){var e=evDate(c);if(inPlat(c)&&e)ms[e.slice(0,7)]=(ms[e.slice(0,7)]||0)+1});
@@ -401,7 +417,11 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     var lab=[];
     if(state.age!=="all")lab.push(["age",AGES.filter(function(a){return a[0]===state.age})[0][1]]);
     if(state.days.length)lab.push(["day",state.days.length===1?"วันที่ "+dmy(state.days[0]):"เลือก "+state.days.length+" วัน"]);else if(state.month!=="all")lab.push(["month",MON[+state.month.slice(5,7)-1]+" "+(+state.month.slice(0,4)+543)]);
-    if(state.st!=="all")lab.push(["st",state.st==="a:any"?"เตือนทั้งหมด":state.st.indexOf("s:")===0?({ok:"SR ตรงครบ",diff:"SR ไม่ตรงกับแพลตฟอร์ม",eye:"มี SR ต้องดูด้วยตา",none:"ยังไม่มี SR"})[state.st.slice(2)]:state.st.indexOf("n:")===0?"แจ้งในแพลตฟอร์ม":state.st.indexOf("r:")===0?"ผลตรวจ":state.st.slice(2)]);
+    if(state.st!=="all")lab.push(["st","สถานะ: "+state.st.slice(2)]);
+    if(state.sr!=="all")lab.push(["sr",({ok:"SR ตรงครบ",diff:"SR ไม่ตรงกับแพลตฟอร์ม",eye:"มี SR ต้องดูด้วยตา",none:"ยังไม่มี SR"})[state.sr]]);
+    if(state.res!=="all")lab.push(["res","ผลตรวจ: "+RESF.filter(function(a){return a[0]===state.res})[0][1]]);
+    if(state.adm!=="all")lab.push(["adm",ADMF.filter(function(a){return a[0]===state.adm})[0][1]]);
+    if(state.warn)lab.push(["warn","เตือน: เกิน "+WARN+" วัน"]);
     $("act").innerHTML=lab.map(function(l){return '<button type="button" data-clear="'+l[0]+'">'+esc(l[1])+' ✕</button>'}).join("");
     var searching=!!state.q.trim();
     var pool=searching?state.cases:(state.tab==="pin"||byStatus)?state.cases.filter(inPlat):work;
@@ -455,8 +475,8 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     var id=f.closest(".card").dataset.id; write(id,{note:f.querySelector("input").value.trim()},"บันทึกหมายเหตุแล้ว");
   });
   $("plats").addEventListener("click",function(e){var b=e.target.closest("button[data-plat]");if(!b)return;state.plat=b.dataset.plat;state.touched={};render()});
-  function clearF(k){if(k==="q"){state.q="";$("q").value="";render();return}if(k==="plat"||k==="all")state.plat="all";if(k==="age"||k==="all")state.age="all";if(k==="day"||k==="all")state.days=[];if(k==="month"||k==="all")state.month="all";if(k==="st"||k==="all"){state.st="all";$("st").value="all"}state.touched={};render()}
-  function go(t){state.tab=t;state.st="all";state.age="all";state.month="all";state.days=[];$("st").value="all";state.touched={};render()}
+  function clearF(k){if(k==="q"){state.q="";$("q").value="";render();return}if(k==="plat")state.plat="all";if(k==="age"||k==="all")state.age="all";if(k==="day"||k==="all")state.days=[];if(k==="month"||k==="all")state.month="all";if(k==="st"||k==="all"){state.st="all";$("st").value="all"}if(k==="sr"||k==="all")state.sr="all";if(k==="res"||k==="all")state.res="all";if(k==="adm"||k==="all")state.adm="all";if(k==="warn"||k==="all")state.warn=false;state.touched={};render()}
+  function go(t){state.tab=t;state.st="all";state.sr="all";state.res="all";state.adm="all";state.warn=false;state.age="all";state.month="all";state.days=[];$("st").value="all";state.touched={};render()}
   $("ages").addEventListener("click",function(e){var b=e.target.closest("button[data-age]");if(!b)return;state.age=b.dataset.age;state.touched={};render()});
   $("months").addEventListener("click",function(e){var b=e.target.closest("button[data-month]");if(!b)return;state.month=b.dataset.month;state.touched={};render()});
   $("days").addEventListener("click",function(e){var b=e.target.closest("button[data-day]");if(!b)return;var d=b.dataset.day,i=state.days.indexOf(d);if(i>-1)state.days.splice(i,1);else state.days.push(d);state.touched={};render()});
@@ -466,10 +486,12 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
   $("tabTodo").addEventListener("click",function(){go("todo")});
   $("tabDone").addEventListener("click",function(){go("done")});
   $("tabPin").addEventListener("click",function(){go("pin")});
-  $("needBox").addEventListener("click",function(e){if(!e.target.closest||!e.target.closest("#needGo"))return;state.st=nFirst();state.touched={};render();$("st").value=state.st});
-  function nFirst(){return state.cases.some(function(c){return need(c)==="dispute"})?"n:dispute":"n:confirm"}
-  $("srbar").addEventListener("click",function(e){var b=e.target.closest("button[data-sr]");if(!b)return;var v="s:"+b.dataset.sr;state.st=state.st===v?"all":v;state.touched={};render();$("st").value=state.st});
-  $("alertBox").addEventListener("click",function(e){if(!e.target.closest||!e.target.closest("#alertGo"))return;state.st="a:any";state.touched={};render();$("st").value="a:any"});
+  $("needBox").addEventListener("click",function(e){if(!e.target.closest||!e.target.closest("#needGo"))return;state.adm=nFirst();state.touched={};render()});
+  function nFirst(){return state.cases.some(function(c){return need(c)==="dispute"})?"dispute":"confirm"}
+  $("srbar").addEventListener("click",function(e){var b=e.target.closest("button[data-sr]");if(!b)return;state.sr=state.sr===b.dataset.sr?"all":b.dataset.sr;state.touched={};render()});
+  $("resf").addEventListener("click",function(e){var b=e.target.closest("button[data-res]");if(!b)return;state.res=b.dataset.res;state.touched={};render()});
+  $("admf").addEventListener("click",function(e){var b=e.target.closest("button[data-adm]");if(!b)return;state.adm=b.dataset.adm;state.touched={};render()});
+  $("alertBox").addEventListener("click",function(e){if(!e.target.closest||!e.target.closest("#alertGo"))return;state.warn=true;state.touched={};render()});
   $("st").addEventListener("change",function(e){state.st=e.target.value;state.touched={};e.target.blur();render()});
   $("q").addEventListener("input",function(e){state.q=e.target.value;render()});
 
@@ -486,7 +508,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       if(j.error){if(!quiet)gate("wait","โหลดรายการไม่ได้ ลองเปิดใหม่อีกครั้ง");return}
       ME=j.me;uid=ME.name;state.meta=j.meta&&j.meta.orph?j.meta:null;
       var a=document.activeElement,typing=a&&a.closest&&a.closest('form[data-act="note"]');
-      state.cases=j.cases.map(function(x){x.items=x.items||[];x.sort=sortKey(x);return x}).sort(function(p,q){return p.sort-q.sort});
+      state.cases=j.cases.map(function(x){x.items=x.items||[];x.typ=canon(x.typ);x.sort=sortKey(x);return x}).sort(function(p,q){return p.sort-q.sort});
       state.loaded=true;gate("");
       $("who").textContent=ME.name+(ME.role==="admin"?" (แอดมิน)":"");$("impBox").hidden=ME.role!=="admin";
       var h=j.imports||[];$("impHist").textContent=h.length?"นำเข้าล่าสุด: "+h.map(function(x){return thDate(x.at)+" โดย "+x.by+" (+"+x["new"]+" ใบ)"}).reverse().slice(0,3).join(" · "):"";
