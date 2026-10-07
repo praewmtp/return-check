@@ -16,7 +16,7 @@ import datetime as dt
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs, unquote
 
-STAFF_KEYS = ('check', 'checked_at', 'checked_by', 'note', 'pinned', 'action', 'action_at', 'action_by', 'sr_confirmed')
+STAFF_KEYS = ('check', 'checked_at', 'checked_by', 'note', 'note_at', 'note_by', 'pinned', 'action', 'action_at', 'action_by', 'sr_confirmed')
 TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
 
 # ---------------------------------------------------------------- small helpers
@@ -836,10 +836,9 @@ class handler(BaseHTTPRequestHandler):
                 patch = {}
                 if 'check' in p and p['check'] in ('', 'ok', 'part', 'none'):
                     patch.update(check=p['check'], checked_at=now if p['check'] else '', checked_by=who['n'] if p['check'] else '')
-                    if not p['check']:
-                        patch['note'] = ''
-                if 'note' in p:
-                    patch['note'] = str(p['note'])[:200]
+                if 'note' in p:  # a problem note can be written on any card at any time; clearing a check never wipes it
+                    tx = str(p['note']).strip()[:500]
+                    patch.update(note=tx, note_at=now if tx else '', note_by=who['n'] if tx else '')
                 if 'pinned' in p:
                     patch['pinned'] = bool(p['pinned'])
                 if 'action' in p and p['action'] in ('', 'dispute', 'refund_ok', 'accept'):

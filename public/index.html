@@ -159,6 +159,11 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
 .done small{display:block;font-weight:400;font-size:13.5px;color:var(--muted)}
 .edit{font:inherit;font-size:15px;font-weight:600;min-height:44px;padding:4px 14px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
 .note{display:grid;gap:6px}
+.note textarea{font:inherit;font-size:17px;padding:8px 12px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);width:100%;resize:vertical}
+.note .chip{font-size:14px;min-height:40px;padding:2px 12px}
+.nshow{background:var(--u3-bg);color:var(--ink);border-left:6px solid var(--u3);border-radius:10px;padding:10px 12px;display:grid;gap:2px;font-size:16px}
+.nshow b{font-size:13.5px;color:var(--u3)} .nshow span{white-space:pre-wrap;overflow-wrap:anywhere} .nshow small{font-size:12.5px;color:var(--muted)}
+.nbox summary{color:var(--brand)}
 .note input{font:inherit;font-size:17px;min-height:50px;padding:8px 12px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);width:100%}
 .note button{font:inherit;font-size:16px;font-weight:600;min-height:48px;border-radius:10px;border:0;background:var(--brand);color:var(--card);cursor:pointer}
 .empty{background:var(--card);border:1px dashed var(--line);border-radius:14px;padding:26px 18px;text-align:center;color:var(--muted)}
@@ -332,7 +337,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     if(c.rank===4){h+='<div class="n" style="color:var(--muted)">'+esc(c.todo)+'</div>'}
     else if(c.check&&RES[c.check]){var r=RES[c.check];
       h+='<div class="done '+r[2]+'"><span>'+r[1]+' '+r[0]+'<small>'+esc(thDate(c.checked_at))+'</small></span>'+(state.canWrite?'<button class="edit" type="button" data-act="clear">แก้ไข</button>':'')+'</div>';
-      if(c.check!=="ok"){h+='<form class="note" data-act="note"><label class="lbl" for="n-'+esc(c.id)+'">'+(c.check==="part"?"ขาดอะไร หรือของเป็นอย่างไร":"หมายเหตุ (ถ้ามี)")+'</label><input id="n-'+esc(c.id)+'" type="text" value="'+esc(c.note)+'" maxlength="200"'+(state.canWrite?'':' disabled')+'>'+(state.canWrite?'<button type="submit">บันทึกหมายเหตุ</button>':'')+'</form>'}
+
     } else {
       var dis=(state.canWrite&&!state.busy[c.id])?'':' disabled';
       h+='<div class="ask">เจอกล่องนี้ไหม เปิดดูแล้วของครบไหม</div><div class="btns">'+
@@ -340,7 +345,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
         '<button class="btn b-part" type="button" data-act="part"'+dis+'><span class="ic" aria-hidden="true">!</span>ได้ของไม่ครบ</button>'+
         '<button class="btn b-no" type="button" data-act="none"'+dis+'><span class="ic" aria-hidden="true">✕</span>ไม่ได้ของ</button></div>';
     }
-    return h+actHTML(c)+'</div></article>';
+    return h+actHTML(c)+noteHTML(c)+'</div></article>';
   }
   // Refund requests: tell the platform within REPLY days after the goods are back.
   var REPLY=2;
@@ -355,7 +360,14 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     if(u.unk)return '<div class="days over">ด่วน ขอคืนเงิน · ของถึงร้านแล้ว (ไฟล์ไม่บอกวันที่) '+act+'ทันที</div>';
     if(u.left<0)return '<div class="days over">ด่วน ขอคืนเงิน · เกินกำหนดแจ้ง '+(-u.left)+' วัน (ของถึง '+esc(dmy(u.at))+') '+act+'</div>';
     return '<div class="days '+(u.left===0?'over':'warn')+'">ด่วน ขอคืนเงิน · '+(u.left===0?'ต้องแจ้งภายในวันนี้':'ต้องแจ้งภายใน '+u.left+' วัน')+' (ของถึง '+esc(dmy(u.at))+') '+act+'</div>'}
-  function stOk(c){var v=state.st;if(v==="all")return true;if(v==="u:any")return !!urg2(c);if(v.indexOf("s:")===0)return srState(c)===v.slice(2);if(v==="n:any")return !!need(c);if(v==="n:done")return !!c.action;if(v.indexOf("n:")===0)return need(c)===v.slice(2);if(v==="a:any")return lvl(c)>=2;if(v==="a:over")return lvl(c)===3;if(v==="a:warn")return lvl(c)===2;if(v.indexOf("r:")===0)return c.rank<4&&(c.check||"")===v.slice(2);return c.typ===v.slice(2)}
+  var NOTEQ=["ได้ของไม่ครบ","ไม่ได้ของ","ของเสียหาย","ได้ของผิด/ไม่ใช่ของร้าน","เปิดข้อพิพาทแล้ว","รอแพลตฟอร์มตอบ","ชนะข้อพิพาท","แพ้ข้อพิพาท"];
+  function noteHTML(c){var has=c.note&&String(c.note).trim();
+    var h=has?'<div class="nshow"><b>โน้ตปัญหา</b><span>'+esc(c.note)+'</span>'+(c.note_at?'<small>'+esc(thDate(c.note_at))+'</small>':'')+'</div>':'';
+    if(!state.canWrite)return h;
+    return h+'<details class="more nbox"'+(has?'':'')+'><summary>'+(has?'แก้ไขโน้ต':'เขียนโน้ตปัญหา (ข้อพิพาท · ได้ของไม่ครบ · ไม่ได้ของ)')+'</summary>'+
+      '<form class="note" data-act="note"><span class="lbl">แตะคำที่ใช้บ่อย หรือพิมพ์เอง</span><div class="chips">'+NOTEQ.map(function(t){return '<button class="chip" type="button" data-act="nq" data-t="'+esc(t)+'">'+esc(t)+'</button>'}).join("")+'</div>'+
+      '<label class="lbl" for="n-'+esc(c.id)+'">รายละเอียด</label><textarea id="n-'+esc(c.id)+'" rows="3" maxlength="500">'+esc(c.note||"")+'</textarea><button type="submit">บันทึกโน้ต</button></form></details>'}
+  function stOk(c){var v=state.st;if(v==="all")return true;if(v==="u:any")return !!urg2(c);if(v==="x:note")return !!(c.note&&String(c.note).trim());if(v.indexOf("s:")===0)return srState(c)===v.slice(2);if(v==="n:any")return !!need(c);if(v==="n:done")return !!c.action;if(v.indexOf("n:")===0)return need(c)===v.slice(2);if(v==="a:any")return lvl(c)>=2;if(v==="a:over")return lvl(c)===3;if(v==="a:warn")return lvl(c)===2;if(v.indexOf("r:")===0)return c.rank<4&&(c.check||"")===v.slice(2);return c.typ===v.slice(2)}
   function evDate(c){return c.req_date||c.date||""}
   function ageOk(c){var v=state.age;if(v==="all")return true;if(!lvl(c))return false;var d=daysOpen(c);return v==="0-4"?d<=4:v==="5-7"?(d>=5&&d<=7):v==="8+"?d>7:d>14}
   function whenOk(c){var e=evDate(c);if(state.days.length)return state.days.indexOf(e)>-1;return state.month==="all"||e.slice(0,7)===state.month}
@@ -391,7 +403,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     else nb.hidden=true;
     var tl=TYPES.concat(typs.filter(function(t){return TYPES.indexOf(t)<0})).filter(function(t){return cnt(function(c){return c.typ===t})>0||state.st==="t:"+t});
     var G=[["",[["all","ทุกสถานะ ("+cntF(function(){return true})+")"]]],
-      ["งานที่ต้องทำ",[["u:any","ด่วน: ขอคืนเงิน ต้องแจ้งใน "+REPLY+" วัน ("+cntF(function(c){return !!urg2(c)})+")"],["n:dispute","ต้องเปิดข้อพิพาท ("+cntF(function(c){return need(c)==="dispute"})+")"],["n:confirm","ต้องยืนยันคืนเงิน ("+cntF(function(c){return need(c)==="confirm"})+")"],["n:review","คืนเงินอย่างเดียว รอแอดมินตรวจ ("+cntF(function(c){return need(c)==="review"})+")"],["n:done","แจ้งในแพลตฟอร์มแล้ว ("+cntF(function(c){return !!c.action})+")"],["a:any","เตือนทั้งหมด ("+cntF(function(c){return lvl(c)>=2})+")"]]],
+      ["งานที่ต้องทำ",[["u:any","ด่วน: ขอคืนเงิน ต้องแจ้งใน "+REPLY+" วัน ("+cntF(function(c){return !!urg2(c)})+")"],["n:dispute","ต้องเปิดข้อพิพาท ("+cntF(function(c){return need(c)==="dispute"})+")"],["n:confirm","ต้องยืนยันคืนเงิน ("+cntF(function(c){return need(c)==="confirm"})+")"],["n:review","คืนเงินอย่างเดียว รอแอดมินตรวจ ("+cntF(function(c){return need(c)==="review"})+")"],["x:note","มีโน้ตปัญหา ("+cntF(function(c){return !!(c.note&&String(c.note).trim())})+")"],["n:done","แจ้งในแพลตฟอร์มแล้ว ("+cntF(function(c){return !!c.action})+")"],["a:any","เตือนทั้งหมด ("+cntF(function(c){return lvl(c)>=2})+")"]]],
       ["เทียบกับ SR",[["s:ok","SR ตรงครบ ("+cntF(function(c){return srState(c)==="ok"})+")"],["s:diff","SR ไม่ตรงกับแพลตฟอร์ม ("+cntF(function(c){return srState(c)==="diff"})+")"],["s:eye","มี SR ต้องดูด้วยตา ("+cntF(function(c){return srState(c)==="eye"})+")"],["s:none","ยังไม่มี SR ("+cntF(function(c){return srState(c)==="none"})+")"]]],
       ["ประเภทรายการ",tl.map(function(t){return ["t:"+t,t+" ("+cntF(function(c){return c.typ===t})+")"]})],
       ["ผลตรวจของคลัง",[["r:","ผลตรวจ: ยังไม่ตรวจ ("+cntF(function(c){return c.rank<4&&!c.check})+")"],["r:ok","ผลตรวจ: ได้ของครบ ("+cntF(function(c){return c.check==="ok"})+")"],["r:part","ผลตรวจ: ได้ของไม่ครบ ("+cntF(function(c){return c.check==="part"})+")"],["r:none","ผลตรวจ: ไม่ได้ของ ("+cntF(function(c){return c.check==="none"})+")"]]]];
@@ -427,7 +439,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     var lab=[];
     if(state.age!=="all")lab.push(["age",AGES.filter(function(a){return a[0]===state.age})[0][1]]);
     if(state.days.length)lab.push(["day",state.days.length===1?"วันที่ "+dmy(state.days[0]):"เลือก "+state.days.length+" วัน"]);else if(state.month!=="all")lab.push(["month",MON[+state.month.slice(5,7)-1]+" "+(+state.month.slice(0,4)+543)]);
-    if(state.st!=="all")lab.push(["st",state.st==="u:any"?"ด่วน: ขอคืนเงิน":state.st==="a:any"?"เตือนทั้งหมด":state.st.indexOf("s:")===0?({ok:"SR ตรงครบ",diff:"SR ไม่ตรงกับแพลตฟอร์ม",eye:"มี SR ต้องดูด้วยตา",none:"ยังไม่มี SR"})[state.st.slice(2)]:state.st.indexOf("n:")===0?"แจ้งในแพลตฟอร์ม":state.st.indexOf("r:")===0?"ผลตรวจ":state.st.slice(2)]);
+    if(state.st!=="all")lab.push(["st",state.st==="x:note"?"มีโน้ตปัญหา":state.st==="u:any"?"ด่วน: ขอคืนเงิน":state.st==="a:any"?"เตือนทั้งหมด":state.st.indexOf("s:")===0?({ok:"SR ตรงครบ",diff:"SR ไม่ตรงกับแพลตฟอร์ม",eye:"มี SR ต้องดูด้วยตา",none:"ยังไม่มี SR"})[state.st.slice(2)]:state.st.indexOf("n:")===0?"แจ้งในแพลตฟอร์ม":state.st.indexOf("r:")===0?"ผลตรวจ":state.st.slice(2)]);
     $("act").innerHTML=lab.map(function(l){return '<button type="button" data-clear="'+l[0]+'">'+esc(l[1])+' ✕</button>'}).join("");
     var searching=!!state.q.trim();
     var pool=searching?state.cases:(state.tab==="pin"||byStatus)?state.cases.filter(inPlat):work;
@@ -459,7 +471,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       if(j._status===401){gate("login");return}
       if(!j.ok){say("บันทึกไม่สำเร็จ ลองกดอีกครั้ง");return}
       var c=find(id);
-      if(c){["check","checked_at","checked_by","note","pinned","action","action_at","action_by"].forEach(function(k){if(k in j.staff)c[k]=j.staff[k]})}
+      if(c){["check","checked_at","checked_by","note","note_at","note_by","pinned","action","action_at","action_by"].forEach(function(k){if(k in j.staff)c[k]=j.staff[k]})}
       say(okMsg);
     }).catch(function(){say("บันทึกไม่สำเร็จ ตรวจอินเทอร์เน็ตแล้วลองอีกครั้ง")}).then(function(){delete state.busy[id];render()});
   }
@@ -473,12 +485,13 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     if(act==="a-clear"){write(id,{action:"",action_at:"",action_by:""},"ยกเลิกการแจ้งแล้ว");return}
     if(act.indexOf("a-")===0&&ACT[act.slice(2)]){write(id,{action:act.slice(2),action_at:new Date().toISOString(),action_by:uid||""},"บันทึกแล้ว: "+ACT[act.slice(2)]);return}
     if(act==="pin"){write(id,{pinned:!c.pinned},c.pinned?"เลิกปักหมุดแล้ว":"ปักหมุดแล้ว");return}
-    if(act==="clear"){state.touched[id]=true;write(id,{check:"",checked_at:"",checked_by:"",note:""},"ยกเลิกผลตรวจแล้ว")}
+    if(act==="nq"){var box=document.getElementById("n-"+id);if(box){var t=b.dataset.t,v=box.value.trim();if(v.indexOf(t)<0)box.value=v?v+" · "+t:t;if(box.focus)box.focus()}return}
+    if(act==="clear"){state.touched[id]=true;write(id,{check:"",checked_at:"",checked_by:""},"ยกเลิกผลตรวจแล้ว")}
     else if(RES[act]){state.touched[id]=true;write(id,{check:act,checked_at:new Date().toISOString(),checked_by:uid||""},"บันทึกแล้ว: "+RES[act][0])}
   });
   document.addEventListener("submit",function(e){
     var f=e.target.closest('form[data-act="note"]'); if(!f)return; e.preventDefault();
-    var id=f.closest(".card").dataset.id; write(id,{note:f.querySelector("input").value.trim()},"บันทึกหมายเหตุแล้ว");
+    var id=f.closest(".card").dataset.id, tx=f.querySelector("textarea").value.trim(); write(id,{note:tx,note_at:tx?new Date().toISOString():"",note_by:tx?(uid||""):""},tx?"บันทึกโน้ตแล้ว":"ลบโน้ตแล้ว");
   });
   $("plats").addEventListener("click",function(e){var b=e.target.closest("button[data-plat]");if(!b)return;state.plat=b.dataset.plat;state.touched={};render()});
   function clearF(k){if(k==="q"){state.q="";$("q").value="";render();return}if(k==="plat"||k==="all")state.plat="all";if(k==="age"||k==="all")state.age="all";if(k==="day"||k==="all")state.days=[];if(k==="month"||k==="all")state.month="all";if(k==="st"||k==="all"){state.st="all";$("st").value="all"}state.touched={};render()}
