@@ -16,7 +16,7 @@ import datetime as dt
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs, unquote
 
-STAFF_KEYS = ('check', 'checked_at', 'checked_by', 'note', 'note_at', 'note_by', 'loc', 'loc_at', 'loc_by', 'closed', 'closed_at', 'closed_by', 'closed_why', 'closed_typ', 'pinned', 'action', 'action_at', 'action_by', 'sr_confirmed')
+STAFF_KEYS = ('check', 'checked_at', 'checked_by', 'note', 'note_at', 'note_by', 'loc', 'loc_items', 'loc_at', 'loc_by', 'closed', 'closed_at', 'closed_by', 'closed_why', 'closed_typ', 'pinned', 'action', 'action_at', 'action_by', 'sr_confirmed')
 TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
 
 # ---------------------------------------------------------------- small helpers
@@ -861,8 +861,12 @@ class handler(BaseHTTPRequestHandler):
                     tx = str(p['note']).strip()[:500]
                     patch.update(note=tx, note_at=now if tx else '', note_by=who['n'] if tx else '')
                 if 'loc' in p:  # where the returned goods were put, so the returns desk can write the SR
-                    lv = str(p['loc']).strip()[:80]
+                    lv = str(p['loc']).strip()[:1000]
                     patch.update(loc=lv, loc_at=now if lv else '', loc_by=who['n'] if lv else '')
+                    if isinstance(p.get('loc_items'), list):  # one location per item line, same order as the card's items
+                        patch['loc_items'] = [str(v or '').strip()[:80] for v in p['loc_items'][:100]]
+                    else:
+                        patch['loc_items'] = []
                 if 'pinned' in p:
                     patch['pinned'] = bool(p['pinned'])
                 if 'action' in p and p['action'] in ('', 'dispute', 'refund_ok', 'accept'):
@@ -883,7 +887,9 @@ class handler(BaseHTTPRequestHandler):
                         has_sr = bool((sr.get(cid) or {}).get('sr'))
                         if goods and sf.get('check') in ('ok', 'part') and not has_sr:
                             return self._send(400, {'error': 'need_sr'})  # goods are back: must be booked in before the job can end
-                        if goods and sf.get('check') in ('ok', 'part') and not str(sf.get('loc') or '').strip() and not why:
+                        li = sf.get('loc_items') or []
+                        loc_ok = (all(str(v or '').strip() for v in li) and len(li) >= len(d.get('items') or [])) if li else bool(str(sf.get('loc') or '').strip())
+                        if goods and sf.get('check') in ('ok', 'part') and not loc_ok and not why:
                             return self._send(400, {'error': 'need_why'})
                         patch.update(closed=p['closed'], closed_at=now, closed_by=who['n'], closed_why=why, closed_typ=d.get('typ') or '')
                     else:
