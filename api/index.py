@@ -909,6 +909,26 @@ class handler(BaseHTTPRequestHandler):
                 return self._send(200, {'ok': True})
             if who['r'] != 'admin':
                 return self._send(403, {'error': 'admin_only'})
+            if a == 'pins':  # change PINs: needs the current admin PIN again; everyone is signed out afterwards
+                if not hmac.compare_digest(_hash(str(b.get('admin_pin') or ''), auth['salt']), auth['admin']):
+                    time.sleep(1.2)
+                    return self._send(401, {'error': 'bad_pin'})
+                sp, ap = str(b.get('new_staff') or ''), str(b.get('new_admin') or '')
+                if not sp and not ap:
+                    return self._send(400, {'error': 'empty'})
+                if (sp and len(sp) < 4) or (ap and len(ap) < 6):
+                    return self._send(400, {'error': 'pin_rule'})
+                new = dict(auth)
+                if sp:
+                    new['staff'] = _hash(sp, auth['salt'])
+                if ap:
+                    new['admin'] = _hash(ap, auth['salt'])
+                if hmac.compare_digest(new['staff'], new['admin']):
+                    return self._send(400, {'error': 'pin_rule'})
+                new['secret'] = base64.urlsafe_b64encode(os.urandom(32)).decode()
+                meta_set('auth', new)
+                log(who['n'], 'pins', {'staff': bool(sp), 'admin': bool(ap)})
+                return self._send(200, {'ok': True, 'token': make_token(new, who['n'], 'admin')})
             if a == 'import':
                 files = [(f.get('name') or 'file', base64.b64decode(f.get('b64') or '')) for f in (b.get('files') or [])]
                 if not files:

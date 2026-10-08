@@ -116,6 +116,7 @@ h1{font-size:24px;font-weight:700;margin:0;line-height:1.25}
 .gate .err{color:var(--no);font-weight:600;font-size:15px}
 .imp{display:grid;gap:12px;padding:4px 0 8px}
 .imp input[type=file]{font:inherit;font-size:15px;width:100%;padding:12px;border-radius:10px;border:2px dashed var(--line);background:var(--card);color:var(--ink)}
+.imp .pin{font:inherit;font-size:18px;min-height:50px;padding:8px 12px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);width:100%}
 .imp .go{font:inherit;font-size:17px;font-weight:700;min-height:52px;border-radius:12px;border:0;background:var(--brand);color:var(--card);cursor:pointer}
 .imp .go.ok{background:var(--ok);} .imp .go[disabled]{opacity:.45;cursor:default}
 .prow{background:var(--card);border:1px solid var(--line);border-left:6px solid var(--ok);border-radius:10px;padding:10px 12px;font-size:14.5px;display:grid;gap:2px}
@@ -261,6 +262,15 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       <details class="admin"><summary>ย้ายข้อมูลเดิมเข้าเว็บนี้ (ทำครั้งเดียว)</summary>
         <div class="imp"><label class="lbl" for="resFile">เลือกไฟล์สำรอง .json ที่ได้จาก Claude</label><input id="resFile" type="file" accept=".json">
         <button class="go" type="button" id="resGo">ย้ายข้อมูลเข้า</button><div class="lbl" id="resOut" aria-live="polite"></div></div>
+      </details>
+      <details class="admin"><summary>เปลี่ยนรหัส PIN</summary>
+        <form class="imp" id="pinForm" autocomplete="off">
+          <label class="lbl" for="pcOld">PIN แอดมินตอนนี้ (ยืนยันว่าเป็นคุณ)</label><input class="pin" id="pcOld" type="password" autocomplete="current-password" required>
+          <label class="lbl" for="pcStaff">PIN พนักงานใหม่ (อย่างน้อย 4 ตัว) เว้นว่าง = ไม่เปลี่ยน</label><input class="pin" id="pcStaff" type="password" autocomplete="new-password">
+          <label class="lbl" for="pcAdmin">PIN แอดมินใหม่ (อย่างน้อย 6 ตัว) เว้นว่าง = ไม่เปลี่ยน</label><input class="pin" id="pcAdmin" type="password" autocomplete="new-password">
+          <button class="go" type="submit">เปลี่ยนรหัส</button><div class="lbl" id="pcOut" role="status"></div>
+          <span class="lbl">เปลี่ยนแล้ว ทุกเครื่องที่เข้าอยู่ต้องใส่ PIN ใหม่ ข้อมูลในระบบไม่หาย</span>
+        </form>
       </details>
     </div>
   </details>
@@ -621,6 +631,14 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       $("resOut").textContent="กำลังย้ายข้อมูล…";
       api("restore",o).then(function(j){$("resOut").textContent=j.ok?"ย้ายแล้ว "+j.cards+" ใบ":"ย้ายไม่ได้: "+(j.error||"");if(j.ok)load(true)}).catch(function(){$("resOut").textContent="ส่งไฟล์ไม่ได้"})};
     r.readAsText(f)});
+  $("pinForm").addEventListener("submit",function(e){e.preventDefault();var o=$("pcOut"),s=$("pcStaff").value,ad=$("pcAdmin").value;
+    if(!s&&!ad){o.textContent="ใส่ PIN ใหม่อย่างน้อย 1 ช่อง";return}
+    o.textContent="กำลังเปลี่ยน…";
+    api("pins",{admin_pin:$("pcOld").value,new_staff:s,new_admin:ad}).then(function(j){
+      if(j.ok){TOKEN=j.token;try{localStorage.setItem("rc_token",TOKEN)}catch(_){}
+        o.textContent="เปลี่ยนแล้ว: "+[s?"PIN พนักงาน":"",ad?"PIN แอดมิน":""].filter(function(x){return x}).join(" และ ")+" · แจ้ง PIN ใหม่ให้ทีมด้วย";$("pcOld").value="";$("pcStaff").value="";$("pcAdmin").value="";return}
+      o.textContent=j.error==="bad_pin"?"PIN แอดมินตอนนี้ไม่ถูกต้อง":j.error==="pin_rule"?"PIN พนักงานอย่างน้อย 4 ตัว แอดมินอย่างน้อย 6 ตัว และห้ามซ้ำกัน":j.error==="admin_only"?"ต้องเข้าด้วย PIN แอดมิน":"เปลี่ยนไม่สำเร็จ ลองอีกครั้ง";
+    }).catch(function(){o.textContent="เชื่อมต่อไม่ได้"})});
   /* ---------- evidence photos ---------- */
   state.pmsg={};state.pbig=null;state.pdel=null;
   var PURL={}, PWAIT={};
