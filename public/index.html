@@ -335,12 +335,14 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       if(pd)return '<div class="cfm"><b>ยืนยันบันทึกว่า "'+ACT[pd]+'" ใช่ไหม</b><span class="sub">บันทึกหลังจากทำในระบบของแพลตฟอร์มแล้วเท่านั้น</span><div class="nbtns"><button class="nbtn pri" type="button" data-act="a-'+pd+'"'+dis+'>ใช่ บันทึก</button><button class="nbtn" type="button" data-act="n-cancel">ยกเลิก</button></div></div>';
       if(!state.open[c.id])return '<button class="nopen" type="button" data-act="n-open">บันทึกผลการแจ้งใน '+esc(pfm)+'</button>';
       return '<div class="nbtns">'+list.map(function(k){return '<button class="nbtn" type="button" data-act="n-pick-'+k+'">'+ACT[k]+'</button>'}).join("")+'<button class="nopen" type="button" data-act="n-cancel">ปิด</button></div>'}
-    if(c.action)return '<div class="need ok"><b>แจ้งใน '+esc(pfm)+' แล้ว: '+esc(ACT[c.action]||c.action)+'</b><span class="sub">'+esc(thDate(c.action_at))+' · '+esc(money)+'</span>'+(state.canWrite?'<button class="edit" type="button" data-act="a-clear">แก้ไข</button>':'')+'</div>';
+    if(c.action)return '<div class="need ok"><b>แจ้งใน '+esc(pfm)+' แล้ว: '+esc(ACT[c.action]||c.action)+'</b><span class="sub">'+esc(stamp("แจ้งเมื่อ",c.action_at,c.action_by))+' · '+esc(money)+'</span>'+(state.canWrite?'<button class="edit" type="button" data-act="a-clear">แก้ไข</button>':'')+'</div>';
     if(n==="dispute")return '<div class="need d"><b>ต้องเปิดข้อพิพาทใน '+esc(pfm)+'</b><span class="sub">คลังแจ้ง: '+RES[c.check][0]+' · '+esc(money)+(paid?'':' ห้ามกดยืนยันคืนเงิน')+'</span>'+(dl?'<span class="sub">'+esc(dl)+'</span>':'')+btns(["dispute","refund_ok"])+'</div>';
     if(n==="confirm")return '<div class="need c"><b>ได้ของครบ ยืนยันคืนเงินใน '+esc(pfm)+' ได้</b><span class="sub">'+esc(money)+'</span>'+btns(["refund_ok","dispute"])+'</div>';
     if(n==="review")return '<div class="need r">'+(paid?'<b>คืนเงินไปแล้วโดยไม่มีของคืน</b>':'<b>ลูกค้าขอคืนเงินโดยไม่ส่งของคืน ยังไม่คืนเงิน</b>')+'<span class="sub">'+esc(money)+' · ถ้าเหตุผลของลูกค้าไม่ถูกต้อง ให้เปิดข้อพิพาท</span>'+(dl?'<span class="sub">'+esc(dl)+'</span>':'')+btns(["dispute","accept"])+'</div>';
     return '<div class="need x">'+esc(money)+(c.check?'':' · รอคลังตรวจของก่อน จึงยืนยันคืนเงินหรือเปิดข้อพิพาท')+'</div>'}
-  function thDate(iso){if(!iso)return"";var d=new Date(iso);if(isNaN(d))return"";return d.toLocaleDateString("th-TH",{day:"numeric",month:"short"})+" "+d.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"})}
+  function thDate(iso){if(!iso)return"";var d=new Date(iso);if(isNaN(d))return"";return d.toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"2-digit"})+" "+d.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"})}
+  // every staff entry shows the day it was made and who made it
+  function stamp(word,at,by){var t=thDate(at);if(!t)return"";return word+" "+t+(by&&String(by).indexOf("u_")!==0?" · โดย "+by:"")}
 
   function cardHTML(c){
     var total=c.items.reduce(function(a,i){return a+(+i.qty||0)},0);
@@ -362,7 +364,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       (c.reason?'<dt>เหตุผล</dt><dd style="font-family:inherit">'+esc(c.reason)+'</dd>':'')+'</dl></details>';
     if(c.rank===4){h+='<div class="n" style="color:var(--muted)">'+esc(c.todo)+'</div>'}
     else if(c.check&&RES[c.check]){var r=RES[c.check];
-      h+='<div class="done '+r[2]+'"><span>'+r[1]+' '+r[0]+'<small>'+esc(thDate(c.checked_at))+'</small></span>'+(state.canWrite?'<button class="edit" type="button" data-act="clear">แก้ไข</button>':'')+'</div>';
+      h+='<div class="done '+r[2]+'"><span>'+r[1]+' '+r[0]+'<small>'+esc(stamp("ตรวจเมื่อ",c.checked_at,c.checked_by))+'</small></span>'+(state.canWrite?'<button class="edit" type="button" data-act="clear">แก้ไข</button>':'')+'</div>';
 
     } else {
       var dis=(state.canWrite&&!state.busy[c.id])?'':' disabled';
@@ -397,8 +399,8 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       '<label class="pbtn">＋ ถ่ายรูป / เลือกรูป (เลือกหลายรูปได้)<input type="file" accept="image/*" multiple data-pfile="'+id+'"></label>'+
       '<div class="lbl pmsg" id="pm-'+id+'" aria-live="polite">'+esc(state.pmsg[c.id]||"")+'</div></div>'}
   function noteHTML(c){var has=c.note&&String(c.note).trim(), goods=c.rank<4, got=c.check==="ok"||c.check==="part";
-    var h=(c.loc?'<div class="nshow loc"><b>เก็บเข้าคลัง</b><span>'+esc(c.loc)+'</span></div>':(goods&&got?'<div class="nshow warn"><b>ยังไม่ระบุคลังที่เก็บ</b><span>แผนกคืนต้องใช้เพื่อทำ SR</span></div>':''))+
-      (has?'<div class="nshow"><b>โน้ตปัญหา</b><span>'+esc(c.note)+'</span>'+(c.note_at?'<small>'+esc(thDate(c.note_at))+(c.note_by&&c.note_by.indexOf("u_")!==0?' · '+esc(c.note_by):'')+'</small>':'')+'</div>':'');
+    var h=(c.loc?'<div class="nshow loc"><b>เก็บเข้าคลัง</b><span>'+esc(c.loc)+'</span>'+(c.loc_at?'<small>'+esc(stamp("บันทึกเมื่อ",c.loc_at,c.loc_by))+'</small>':'')+'</div>':(goods&&got?'<div class="nshow warn"><b>ยังไม่ระบุคลังที่เก็บ</b><span>แผนกคืนต้องใช้เพื่อทำ SR</span></div>':''))+
+      (has?'<div class="nshow"><b>โน้ตปัญหา</b><span>'+esc(c.note)+'</span>'+(c.note_at?'<small>'+esc(stamp("เขียนเมื่อ",c.note_at,c.note_by))+'</small>':'')+'</div>':'');
     h+=((c.photos||[]).length?'<div class="nshow loc"><b>รูปหลักฐาน '+c.photos.length+' รูป</b><span>แตะ “แก้ไขคลังที่เก็บ / โน้ต / รูปหลักฐาน” เพื่อดู</span></div>':'');
     if(!state.canWrite)return h;
     var open=!!state.nopen[c.id];
