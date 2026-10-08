@@ -182,6 +182,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
 .note .chip{font-size:14px;min-height:40px;padding:2px 12px}
 .nshow{background:var(--u3-bg);color:var(--ink);border-left:6px solid var(--u3);border-radius:10px;padding:10px 12px;display:grid;gap:2px;font-size:16px}
 .note input{font:inherit;font-size:17px;min-height:50px;padding:8px 12px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);width:100%}
+.locf{background:var(--part-bg);border:2px solid var(--part);border-radius:12px;padding:12px}
 .nshow.loc{background:var(--ok-bg);border-left-color:var(--ok)} .nshow.loc b{color:var(--ok)}
 .nshow.warn{background:var(--part-bg);border-left-color:var(--part)} .nshow.warn b{color:var(--part)}
 .nshow b{font-size:13.5px;color:var(--u3)} .nshow span{white-space:pre-wrap;overflow-wrap:anywhere} .nshow small{font-size:12.5px;color:var(--muted)}
@@ -425,6 +426,8 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     return '<div class="days '+(u.left===0?'over':'warn')+'">ด่วน ขอคืนเงิน · '+(u.left===0?'ต้องแจ้งภายในวันนี้':'ต้องแจ้งภายใน '+u.left+' วัน')+' (ของถึง '+esc(dmy(u.at))+') '+act+'</div>'}
   var NOTEQ=["ได้ของไม่ครบ","ไม่ได้ของ","ของเสียหาย","ได้ของผิด/ไม่ใช่ของร้าน","เปิดข้อพิพาทแล้ว","รอแพลตฟอร์มตอบ","ชนะข้อพิพาท","แพ้ข้อพิพาท"];
   function locs(){var m={};state.cases.forEach(function(c){var l=(c.loc||"").trim();if(l)m[l]=(m[l]||0)+1});return Object.keys(m).sort(function(x,y){return m[y]-m[x]}).slice(0,6)}
+  function locIn(c){return (locs().length?'<div class="chips">'+locs().map(function(t){return '<button class="chip" type="button" data-act="lq" data-t="'+esc(t)+'">'+esc(t)+'</button>'}).join("")+'</div>':'')+
+    '<input id="l-'+esc(c.id)+'" data-loc="1" type="text" maxlength="80" value="'+esc(c.loc||"")+'" placeholder="เช่น คลัง 1 ชั้น A">'}
   function photoHTML(c){var ps=c.photos||[],id=esc(c.id);
     return '<div class="ph" data-ph="'+id+'"><span class="lbl">รูปหลักฐาน'+(ps.length?' ('+ps.length+' รูป) แตะรูปเพื่อขยาย กดค้างเพื่อบันทึกลงเครื่อง':' (ใช้ยื่นแพลตฟอร์มเวลาได้ของไม่ครบ / ข้อพิพาท)')+'</span>'+
       (ps.length?'<div class="pgrid">'+ps.map(function(p){var mine=ME&&(ME.role==="admin"||p.by===ME.name);
@@ -434,16 +437,14 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       '<label class="pbtn">＋ ถ่ายรูป / เลือกรูป (เลือกหลายรูปได้)<input type="file" accept="image/*" multiple data-pfile="'+id+'"></label>')+
       '<div class="lbl pmsg" id="pm-'+id+'" aria-live="polite">'+esc(state.pmsg[c.id]||"")+'</div></div>'}
   function noteHTML(c){var has=c.note&&String(c.note).trim(), goods=c.rank<4, got=c.check==="ok"||c.check==="part";
-    var h=(c.loc?'<div class="nshow loc"><b>เก็บเข้าคลัง</b><span>'+esc(c.loc)+'</span>'+(c.loc_at?'<small>'+esc(stamp("บันทึกเมื่อ",c.loc_at,c.loc_by))+'</small>':'')+'</div>':(goods&&got?'<div class="nshow warn"><b>ยังไม่ระบุคลังที่เก็บ</b><span>แผนกคืนต้องใช้เพื่อทำ SR</span></div>':''))+
+    var h=(c.loc?'<div class="nshow loc"><b>เก็บเข้าคลัง</b><span>'+esc(c.loc)+'</span>'+(c.loc_at?'<small>'+esc(stamp("บันทึกเมื่อ",c.loc_at,c.loc_by))+'</small>':'')+'</div>':(goods&&got?(state.canWrite?'<form class="note locf" data-act="loc"><label for="l-'+esc(c.id)+'"><b>ของเก็บเข้าคลังไหน</b> (ต้องใส่ เพื่อทำ SR)</label>'+locIn(c)+'<button type="submit">บันทึกคลัง</button></form>':'<div class="nshow warn"><b>ยังไม่ระบุคลังที่เก็บ</b><span>แผนกคืนต้องใช้เพื่อทำ SR</span></div>'):''))+
       (has?'<div class="nshow"><b>โน้ตปัญหา</b><span>'+esc(c.note)+'</span>'+(c.note_at?'<small>'+esc(stamp("เขียนเมื่อ",c.note_at,c.note_by))+'</small>':'')+'</div>':'');
     h+=((c.photos||[]).length?'<div class="nshow loc"><b>รูปหลักฐาน '+c.photos.length+' รูป</b><span>แตะ “แก้ไขคลังที่เก็บ / โน้ต / รูปหลักฐาน” เพื่อดู</span></div>':'');
     if(!state.canWrite)return h+((c.photos||[]).length?'<details class="more nbox" data-nbox="'+esc(c.id)+'"'+(state.nopen[c.id]?' open':'')+'><summary>ดูรูปหลักฐาน</summary>'+photoHTML(c)+'</details>':'');
     var open=!!state.nopen[c.id];
-    return h+'<details class="more nbox" data-nbox="'+esc(c.id)+'"'+(open?' open':'')+'><summary>'+(has||c.loc||(c.photos||[]).length?'แก้ไขคลังที่เก็บ / โน้ต / รูปหลักฐาน':'เขียนเพิ่ม: คลังที่เก็บ · โน้ตปัญหา · รูปหลักฐาน')+'</summary>'+
+    return h+'<details class="more nbox" data-nbox="'+esc(c.id)+'"'+(open?' open':'')+'><summary>'+(has||c.loc||(c.photos||[]).length?'แก้ไขคลังที่เก็บ / โน้ต / รูปหลักฐาน':(goods&&!got?'เขียนเพิ่ม: คลังที่เก็บ · โน้ตปัญหา · รูปหลักฐาน':'เขียนโน้ตปัญหา · ใส่รูปหลักฐาน'))+'</summary>'+
       '<form class="note" data-act="note">'+
-      (goods?'<label class="lbl" for="l-'+esc(c.id)+'">เก็บเข้าคลัง / ตำแหน่งไหน (เพื่อทำ SR)</label>'+
-        (locs().length?'<div class="chips">'+locs().map(function(t){return '<button class="chip" type="button" data-act="lq" data-t="'+esc(t)+'">'+esc(t)+'</button>'}).join("")+'</div>':'')+
-        '<input id="l-'+esc(c.id)+'" data-loc="1" type="text" maxlength="80" value="'+esc(c.loc||"")+'" placeholder="เช่น คลัง 1 ชั้น A">':'')+
+      (goods&&!(got&&!c.loc)?'<label class="lbl" for="l-'+esc(c.id)+'">เก็บเข้าคลัง / ตำแหน่งไหน (เพื่อทำ SR)</label>'+locIn(c):'')+
       '<span class="lbl">โน้ต: แตะคำที่ใช้บ่อย หรือพิมพ์เอง</span><div class="chips">'+NOTEQ.map(function(t){return '<button class="chip" type="button" data-act="nq" data-t="'+esc(t)+'">'+esc(t)+'</button>'}).join("")+'</div>'+
       '<label class="lbl" for="n-'+esc(c.id)+'">รายละเอียด</label><textarea id="n-'+esc(c.id)+'" rows="3" maxlength="500">'+esc(c.note||"")+'</textarea><button type="submit">บันทึก</button></form>'+photoHTML(c)+'</details>'}
   function stOk(c){var v=state.st;if(v==="all")return true;if(v==="u:any")return !!urg2(c);if(v==="c:ready")return ready(c);if(v==="w:noloc")return c.rank<4&&(c.check==="ok"||c.check==="part")&&!(c.loc||"").trim();if(v==="w:sr")return c.rank<4&&(c.check==="ok"||c.check==="part")&&!c.sr;if(v==="x:note")return !!(c.note&&String(c.note).trim());if(v.indexOf("s:")===0)return srState(c)===v.slice(2);if(v==="n:any")return !!need(c);if(v==="n:done")return !!c.action;if(v.indexOf("n:")===0)return need(c)===v.slice(2);if(v==="a:any")return lvl(c)>=2;if(v==="a:over")return lvl(c)===3;if(v==="a:warn")return lvl(c)===2;if(v.indexOf("r:")===0)return c.rank<4&&(c.check||"")===v.slice(2);return c.typ===v.slice(2)}
@@ -588,6 +589,10 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     else if(RES[act]){state.touched[id]=true;state.nopen[id]=true;write(id,{check:act,checked_at:new Date().toISOString(),checked_by:uid||""},"บันทึกแล้ว: "+RES[act][0])}
   });
   document.addEventListener("submit",function(e){
+    var lf=e.target.closest('form[data-act="loc"]');
+    if(lf){e.preventDefault();var lid=lf.closest(".card").dataset.id,lx=lf.querySelector("input[data-loc]").value.trim();
+      if(!lx){say("พิมพ์ชื่อคลังก่อน");return}
+      write(lid,{loc:lx,loc_at:new Date().toISOString(),loc_by:uid||""},"บันทึกคลังแล้ว: "+lx);return}
     var f=e.target.closest('form[data-act="note"]'); if(!f)return; e.preventDefault();
     var id=f.closest(".card").dataset.id, tx=f.querySelector("textarea").value.trim(), li=f.querySelector("input[data-loc]"), c0=find(id)||{};
     var pt={}; if(tx!==(c0.note||"")){pt.note=tx;pt.note_at=tx?new Date().toISOString():"";pt.note_by=tx?(uid||""):""}
@@ -627,7 +632,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       if(j.error==="no_db"){gate("wait","ยังไม่ได้ต่อฐานข้อมูล ให้เจ้าของระบบสร้างฐานข้อมูลใน Vercel ก่อน");return}
       if(j.error){if(!quiet)gate("wait","โหลดรายการไม่ได้ ลองเปิดใหม่อีกครั้ง");return}
       ME=j.me;uid=ME.name;state.admin=ME.role==="admin";state.meta=j.meta&&j.meta.orph?j.meta:null;
-      var a=document.activeElement,typing=a&&a.closest&&a.closest('form[data-act="note"],.ph,.cbox');
+      var a=document.activeElement,typing=a&&a.closest&&a.closest('form.note,.ph,.cbox');
       state.cases=j.cases.map(function(x){x.items=x.items||[];x.typ=canon(x.typ);x.sort=sortKey(x);return x}).sort(function(p,q){return p.sort-q.sort});
       state.loaded=true;gate("");
       $("who").textContent=ME.name+(ME.role==="admin"?" (แอดมิน)":"");$("impBox").hidden=ME.role!=="admin";$("pinGo").hidden=ME.role!=="admin";$("pinBox").hidden=ME.role!=="admin";
