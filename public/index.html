@@ -149,6 +149,7 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid
 .card-h{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:10px 14px;font-weight:600;font-size:15px}
 .u1 .card-h{background:var(--u1-bg);color:var(--u1)} .u2 .card-h{background:var(--u2-bg);color:var(--u2)} .u3 .card-h{background:var(--u3-bg);color:var(--u3)} .u4 .card-h{background:var(--soft);color:var(--muted)}
 .urg{font-size:16px;font-weight:700}
+.card.cok{border:2px solid var(--ok)} .card.cok .card-h{background:var(--ok-bg);color:var(--ok)}
 .card-b{padding:12px 14px 14px;display:grid;gap:12px}
 .lbl{font-size:14px;color:var(--muted);display:block}
 .big{font-family:var(--mono);font-size:22px;font-weight:600;letter-spacing:.02em;overflow-wrap:anywhere;line-height:1.3}
@@ -296,7 +297,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
   var TYPES=["ขอคืนสินค้า - รอลูกค้าส่งของกลับ","ขอคืนสินค้า - ของกำลังส่งกลับ","ขอคืนสินค้า - ของถึงร้านแล้ว","คืนเงินอย่างเดียว - ไม่มีของกลับ","ตีกลับ - ของกำลังกลับ","ตีกลับ - ของถึงร้านแล้ว","ตีกลับ - ยังไม่ทราบว่าถึงร้าน","ส่งแล้วยกเลิก - ไม่มีพัสดุตีกลับ"];
   var OLD={"ขอคืนสินค้า - ขนส่งแจ้งส่งคืนถึงร้านแล้ว":2,"ขอคืนสินค้า - คืนเงินแล้ว มีพัสดุส่งคืน":2,"คืนเงินอย่างเดียว - ลูกค้าไม่ส่งของคืน":3,"ส่งแล้วโดนยกเลิก - ของกำลังตีกลับ":4,"ส่งแล้วโดนยกเลิก - ขนส่งแจ้งคืนถึงร้านแล้ว":5,"ส่งแล้วโดนยกเลิก - ไม่อยู่ในรายการตีกลับ":7};
   function canon(t){t=String(t||"");if(TYPES.indexOf(t)>-1)return t;if(t in OLD)return TYPES[OLD[t]];if(t.indexOf("ส่งแล้วโดนยกเลิก")===0)return TYPES[6];return t}
-  var state={tab:"todo",plat:"all",st:"all",age:"all",month:"all",days:[],q:"",cases:[],canWrite:true,touched:{},busy:{},open:{},nopen:{},pend:null,cl:null,admin:true,loaded:false,meta:null};
+  var state={tab:"todo",plat:"all",st:"all",age:"all",month:"all",days:[],q:"",cases:[],canWrite:true,touched:{},busy:{},open:{},nopen:{},pend:null,cl:null,admin:true,canImport:false,loaded:false,meta:null};
   var uid=null, TOKEN=null, ME=null;
   try{TOKEN=localStorage.getItem("rc_token")}catch(_){}
   function api(a,body){var o={method:body?"POST":"GET",headers:{}};if(TOKEN)o.headers.Authorization="Bearer "+TOKEN;
@@ -335,7 +336,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     var L=chk(c),miss=L.filter(function(x){return !x[0]}),noSR=gotGoods(c)&&!c.sr,st=state.cl&&state.cl.id===c.id?state.cl:null;
     var list='<ul>'+L.map(function(x){return '<li class="'+(x[0]?'y':'n')+'">'+(x[0]?'✓':'✕')+' '+esc(x[1])+'</li>'}).join("")+'</ul>';
     var h='<div class="cbox'+(back?' back':'')+'">'+back+'<b>จบงาน (แอดมิน)</b>'+list;
-    if(noSR)return h+'<span class="sub">ได้ของคืนแล้ว ต้องมี SR ก่อนจึงจบงานได้ (กันของเข้าคลังแต่ไม่ลงบัญชี)</span></div>';
+    if(noSR)return h+'<span class="sub">ได้ของคืนแล้ว ต้องมี SR ก่อนจึงจบงานได้ ให้บัญชีทำ SR แล้วนำเข้าไฟล์ SR ระบบจะตรวจให้ว่าตรงไหม แล้วข้อนี้จะเป็น ✓ เอง</span>'+(state.canImport?'<button class="nbtn" type="button" data-act="c-imp">นำเข้าไฟล์ SR เพื่อตรวจ</button>':'')+'</div>';
     if(!st)return h+'<button class="nbtn" type="button" data-act="c-open">'+(miss.length?'จบงานทั้งที่ยังไม่ครบ (ต้องเขียนเหตุผล)':'จบงาน')+'</button></div>';
     if(!st.k||st.k==="reopen")return h+'<span>ผลสุดท้ายของใบนี้คืออะไร</span><div class="nbtns">'+Object.keys(OUT).map(function(k){return '<button class="nbtn" type="button" data-act="c-pick-'+k+'">'+OUT[k]+'</button>'}).join("")+'<button class="nopen" type="button" data-act="c-cancel">ปิด</button></div></div>';
     return h+'<label for="cw-'+esc(c.id)+'">'+(miss.length?'เหตุผลที่จบทั้งที่ยังไม่ครบ (ต้องเขียน)':'หมายเหตุ (ไม่เขียนก็ได้)')+'</label><input id="cw-'+esc(c.id)+'" type="text" maxlength="200" placeholder="'+(miss.length?'เช่น แพ้ข้อพิพาท ตัดเป็นขาดทุน':'')+'">'+
@@ -383,7 +384,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     var total=c.items.reduce(function(a,i){return a+(+i.qty||0)},0);
     var isFd=c.req==="-";
     var top=isClosed(c)?closeHTML(c):"", cw=state.canWrite; if(top)state.canWrite=false;
-    var h='<article class="card u'+c.rank+(c.pinned?' pinned':'')+'" data-id="'+esc(c.id)+'">'+
+    var h='<article class="card u'+c.rank+(c.check==="ok"?' cok':'')+(c.pinned?' pinned':'')+'" data-id="'+esc(c.id)+'">'+
       '<div class="card-h"><span class="urg">'+esc(c.urg)+'</span><span>'+esc(c.typ)+'</span><span class="pf">'+esc(c.platform||"")+'</span>'+pinBtn(c)+'</div><div class="card-b">'+top+urgHTML(c)+daysHTML(c)+
       '<div><span class="lbl">เลขพัสดุบนกล่อง</span><div class="big">'+(boxNo(c)?hl(boxNo(c)):'<span style="font-family:var(--f);font-size:18px;color:var(--muted)">ยังไม่มีเลขพัสดุ</span>')+'</div></div>'+
       '<div><span class="lbl">ของในกล่อง รวม '+total+' ชิ้น</span><ul class="items">'+
@@ -567,6 +568,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     var b=e.target.closest("button[data-act]"); if(!b)return; var card=b.closest(".card"); if(!card)return;
     var id=card.dataset.id, act=b.dataset.act, c=find(id); if(!c)return;
     if(act.indexOf("c-")===0){
+      if(act==="c-imp"){var ib=document.getElementById("impBox");if(ib){ib.open=true;if(ib.scrollIntoView)ib.scrollIntoView({block:"start"})}return}
       if(act==="c-open"){state.cl={id:id,k:""};render();return}
       if(act==="c-cancel"){state.cl=null;render();return}
       if(act==="c-reopen"){state.cl={id:id,k:"reopen"};render();return}
@@ -631,7 +633,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       if(j._status===401){gate("login");return}
       if(j.error==="no_db"){gate("wait","ยังไม่ได้ต่อฐานข้อมูล ให้เจ้าของระบบสร้างฐานข้อมูลใน Vercel ก่อน");return}
       if(j.error){if(!quiet)gate("wait","โหลดรายการไม่ได้ ลองเปิดใหม่อีกครั้ง");return}
-      ME=j.me;uid=ME.name;state.admin=ME.role==="admin";state.meta=j.meta&&j.meta.orph?j.meta:null;
+      ME=j.me;uid=ME.name;state.admin=ME.role==="admin";state.canImport=state.admin;state.meta=j.meta&&j.meta.orph?j.meta:null;
       var a=document.activeElement,typing=a&&a.closest&&a.closest('form.note,.ph,.cbox');
       state.cases=j.cases.map(function(x){x.items=x.items||[];x.typ=canon(x.typ);x.sort=sortKey(x);return x}).sort(function(p,q){return p.sort-q.sort});
       state.loaded=true;gate("");
