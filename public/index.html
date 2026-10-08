@@ -185,6 +185,14 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
 .note .chip{font-size:14px;min-height:40px;padding:2px 12px}
 .nshow{background:var(--u3-bg);color:var(--ink);border-left:6px solid var(--u3);border-radius:10px;padding:10px 12px;display:grid;gap:2px;font-size:16px}
 .note input{font:inherit;font-size:17px;min-height:50px;padding:8px 12px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);width:100%}
+.iform{display:grid;gap:8px} .stp{font-size:16px;color:var(--ink)} .iform .chip{font-size:14px;min-height:40px;padding:2px 12px}
+.items li.miss{background:var(--no-bg)} .items li.miss .v{text-decoration:line-through}
+.items .lr{grid-column:1/-1;display:flex;gap:8px;align-items:stretch}
+.items .lr input{flex:1;min-width:0;font:inherit;font-size:16px;min-height:44px;padding:6px 10px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink)}
+.items .lr .im{flex:none;font:inherit;font-size:14px;font-weight:600;min-height:44px;padding:2px 12px;border-radius:10px;border:2px solid var(--no);background:var(--card);color:var(--no);cursor:pointer}
+.items .lr .im[aria-pressed="true"]{background:var(--no);color:var(--card)}
+.items .lr.ro{font-size:15px;font-weight:600;color:var(--ok)} .items .lr.ro.n{color:var(--no)}
+.isave{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px} .isave button{font:inherit;font-size:16px;font-weight:600;min-height:46px;padding:4px 18px;border-radius:10px;border:0;background:var(--brand);color:var(--card);cursor:pointer} .isave small{font-size:12.5px;color:var(--muted)}
 .lrow{display:grid;gap:4px;font-size:15px;color:var(--ink);font-weight:600;padding-top:6px;border-top:1px dashed var(--line)}
 .lshow{list-style:none;margin:0;padding:0;display:grid;gap:4px} .lshow li{display:flex;justify-content:space-between;gap:10px;font-size:15px} .lshow li span{overflow-wrap:anywhere} .lshow li b{color:var(--ink);font-size:15px;text-align:right;flex:none;max-width:50%} .lshow li.n b{color:var(--no)}
 .locf{background:var(--part-bg);border:2px solid var(--part);border-radius:12px;padding:12px}
@@ -392,8 +400,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     var h='<article class="card u'+c.rank+(c.check==="ok"?' cok':'')+(c.pinned?' pinned':'')+'" data-id="'+esc(c.id)+'">'+
       '<div class="card-h"><span class="urg">'+esc(c.urg)+'</span><span>'+esc(c.typ)+'</span><span class="pf">'+esc(c.platform||"")+'</span>'+pinBtn(c)+'</div><div class="card-b">'+top+urgHTML(c)+daysHTML(c)+
       '<div><span class="lbl">เลขพัสดุบนกล่อง</span><div class="big">'+(boxNo(c)?hl(boxNo(c)):'<span style="font-family:var(--f);font-size:18px;color:var(--muted)">ยังไม่มีเลขพัสดุ</span>')+'</div></div>'+
-      '<div><span class="lbl">ของในกล่อง รวม '+total+' ชิ้น</span><ul class="items">'+
-      c.items.map(function(i){return '<li><div><div class="v">'+esc(i.var&&i.var!=="-"?i.var:i.name)+'</div><div class="n">'+esc(i.var&&i.var!=="-"?i.name:"")+'</div></div><div class="q">×'+esc(i.qty)+'</div></li>'}).join("")+'</ul></div>'+
+      itemsHTML(c,total)+
       '<div class="ids"><div><span class="lbl">รหัสคำสั่งซื้อ</span><div class="mid">'+hl(c.order)+'</div></div>'+
       (isFd&&c.cancel_date?'<div><span class="lbl">วันที่ยกเลิก</span><div class="dt">'+esc(dmy(c.cancel_date))+'</div></div>':'')+
       (isFd?'':'<div><span class="lbl">รหัสขอคืน</span><div class="mid">'+hl(c.req)+'</div></div>'+
@@ -410,7 +417,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
 
     } else {
       var dis=(state.canWrite&&!state.busy[c.id])?'':' disabled';
-      h+='<div class="ask">เจอกล่องนี้ไหม เปิดดูแล้วของครบไหม</div><div class="btns">'+
+      h+='<div class="ask"><b class="stp">2. กดผลตรวจ</b> เปิดกล่องดูแล้วของครบไหม</div><div class="btns">'+
         '<button class="btn b-ok" type="button" data-act="ok"'+dis+'><span class="ic" aria-hidden="true">✓</span>ได้ของครบ</button>'+
         '<button class="btn b-part" type="button" data-act="part"'+dis+'><span class="ic" aria-hidden="true">!</span>ได้ของไม่ครบ</button>'+
         '<button class="btn b-no" type="button" data-act="none"'+dis+'><span class="ic" aria-hidden="true">✕</span>ไม่ได้ของ</button></div>';
@@ -439,12 +446,17 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
   function itemName(i){return (i.var&&i.var!=="-"?i.var:i.name)+" ×"+i.qty}
   function locSum(c,arr){var u={};arr.forEach(function(v){if(v)u[v]=1});var k=Object.keys(u);if(arr.every(function(v){return v})&&k.length===1)return k[0];
     return c.items.map(function(it,i){return arr[i]?itemName(it)+" → "+arr[i]:""}).filter(function(x){return x}).join(" | ")}
-  function locs(){var m={};state.cases.forEach(function(c){(c.loc_items&&c.loc_items.length?c.loc_items:[c.loc]).forEach(function(l){l=String(l||"").trim();if(l)m[l]=(m[l]||0)+1})});return Object.keys(m).sort(function(x,y){return m[y]-m[x]}).slice(0,6)}
-  function locIn(c){var many=c.items.length>1;
-    return (locs().length?'<div class="chips">'+locs().map(function(t){return '<button class="chip" type="button" data-act="lq" data-t="'+esc(t)+'">'+esc(t)+'</button>'}).join("")+'</div>'+(many?'<span class="lbl">แตะชื่อคลัง = ใส่ให้ทุกรายการที่ยังว่าง แล้วแก้เฉพาะรายการที่เก็บคนละที่</span>':''):'')+
-      (many?c.items.map(function(it,i){return '<label class="lrow" for="l-'+esc(c.id)+'-'+i+'"><span>'+(i+1)+'. '+esc(itemName(it))+'</span><input id="l-'+esc(c.id)+'-'+i+'" data-loc="'+i+'" type="text" maxlength="80" value="'+esc(itemLoc(c,i))+'" placeholder="คลัง / ชั้น"></label>'}).join(""):
-        '<input id="l-'+esc(c.id)+'" data-loc="0" type="text" maxlength="80" value="'+esc(itemLoc(c,0)||c.loc||"")+'" placeholder="เช่น คลัง 1 ชั้น A">')}
-  function locShow(c){if(c.items.length>1&&c.loc_items&&c.loc_items.length)return '<ul class="lshow">'+c.items.map(function(it,i){var v=itemLoc(c,i);return '<li'+(v?'':' class="n"')+'><span>'+(i+1)+'. '+esc(itemName(it))+'</span><b>'+(v?esc(v):'ยังไม่ระบุ')+'</b></li>'}).join("")+'</ul>';return '<span>'+esc(c.loc)+'</span>'}
+  function locs(){var m={};state.cases.forEach(function(c){(c.loc_items&&c.loc_items.length?c.loc_items:[c.loc]).forEach(function(l){l=String(l||"").trim();if(l&&l!==MISS&&l.indexOf(" → ")<0)m[l]=(m[l]||0)+1})});return Object.keys(m).sort(function(x,y){return m[y]-m[x]}).slice(0,6)}
+  var MISS="ไม่ได้ของ";
+  function itemsHTML(c,total){var edit=state.canWrite&&c.rank<4,L=locs(),id=esc(c.id);
+    var rows=c.items.map(function(it,i){var v=itemLoc(c,i),miss=v===MISS;
+      return '<li'+(miss?' class="miss"':'')+'><div><div class="v">'+esc(it.var&&it.var!=="-"?it.var:it.name)+'</div><div class="n">'+esc(it.var&&it.var!=="-"?it.name:"")+'</div></div><div class="q">×'+esc(it.qty)+'</div>'+
+        (edit?'<div class="lr"><input id="l-'+id+'-'+i+'" data-loc="'+i+'" type="text" maxlength="80" value="'+esc(v)+'" placeholder="เก็บเข้าคลังไหน" aria-label="คลังที่เก็บ รายการที่ '+(i+1)+'"><button type="button" class="im" data-act="im" aria-pressed="'+miss+'">'+(miss?'ยกเลิก':'ไม่ได้ของ')+'</button></div>':
+          (v&&c.rank<4?'<div class="lr ro'+(miss?' n':'')+'">'+(miss?'ไม่ได้รายการนี้':'เก็บเข้าคลัง: '+esc(v))+'</div>':''))+'</li>'}).join("");
+    var head='<span class="lbl">ของในกล่อง รวม '+total+' ชิ้น</span>'+(edit&&!c.check?'<b class="stp">1. ใส่คลังที่เก็บของแต่ละรายการ</b>':'');
+    if(!edit)return '<div>'+head+'<ul class="items">'+rows+'</ul></div>';
+    return '<form class="iform" data-act="loc">'+head+(L.length?'<div class="chips">'+L.map(function(t){return '<button class="chip" type="button" data-act="lq" data-t="'+esc(t)+'">'+esc(t)+'</button>'}).join("")+'</div>':'')+
+      '<ul class="items">'+rows+'</ul>'+(c.check?'<div class="isave"><button type="submit">บันทึกคลังที่แก้</button>'+(c.loc_at?'<small>'+esc(stamp("บันทึกเมื่อ",c.loc_at,c.loc_by))+'</small>':'')+'</div>':'')+'</form>'}
   function readLoc(form,c){var arr=c.items.map(function(){return ""}),ins=form.querySelectorAll("input[data-loc]"),i;if(!c.items.length)arr=[""];
     for(i=0;i<ins.length;i++)arr[+ins[i].dataset.loc]=ins[i].value.trim();return arr}
   function photoHTML(c){var ps=c.photos||[],id=esc(c.id);
@@ -457,14 +469,13 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       '<div class="lbl pmsg" id="pm-'+id+'" aria-live="polite">'+esc(state.pmsg[c.id]||"")+'</div></div>'}
   function noteHTML(c){var has=c.note&&String(c.note).trim(), goods=c.rank<4, got=c.check==="ok"||c.check==="part";
     var lAny=locAny(c),lAll=locDone(c);
-    var h=(lAny?'<div class="nshow loc"><b>เก็บเข้าคลัง</b>'+locShow(c)+(c.loc_at?'<small>'+esc(stamp("บันทึกเมื่อ",c.loc_at,c.loc_by))+'</small>':'')+'</div>':'')+(goods&&got&&!lAll?(state.canWrite?'<form class="note locf" data-act="loc"><b>ของเก็บเข้าคลังไหน'+(c.items.length>1?' ใส่ทีละรายการ':'')+'</b><span class="lbl">ต้องใส่ เพื่อทำ SR</span>'+locIn(c)+'<button type="submit">บันทึกคลัง</button></form>':'<div class="nshow warn"><b>ยังไม่ระบุคลังที่เก็บ'+(lAny?'ครบทุกรายการ':'')+'</b><span>แผนกคืนต้องใช้เพื่อทำ SR</span></div>'):'')+
+    var h=(goods&&got&&!lAll?'<div class="nshow warn"><b>ยังไม่ระบุคลังที่เก็บ'+(lAny?'ครบทุกรายการ':'')+'</b><span>ใส่ในช่องใต้รายการสินค้าด้านบน แล้วกด “บันทึกคลังที่แก้” (แผนกคืนใช้ทำ SR)</span></div>':'')+
       (has?'<div class="nshow"><b>โน้ตปัญหา</b><span>'+esc(c.note)+'</span>'+(c.note_at?'<small>'+esc(stamp("เขียนเมื่อ",c.note_at,c.note_by))+'</small>':'')+'</div>':'');
-    h+=((c.photos||[]).length?'<div class="nshow loc"><b>รูปหลักฐาน '+c.photos.length+' รูป</b><span>แตะ “แก้ไขคลังที่เก็บ / โน้ต / รูปหลักฐาน” เพื่อดู</span></div>':'');
+    h+=((c.photos||[]).length?'<div class="nshow loc"><b>รูปหลักฐาน '+c.photos.length+' รูป</b><span>แตะ “แก้ไขโน้ต / รูปหลักฐาน” เพื่อดู</span></div>':'');
     if(!state.canWrite)return h+((c.photos||[]).length?'<details class="more nbox" data-nbox="'+esc(c.id)+'"'+(state.nopen[c.id]?' open':'')+'><summary>ดูรูปหลักฐาน</summary>'+photoHTML(c)+'</details>':'');
     var open=!!state.nopen[c.id];
-    return h+'<details class="more nbox" data-nbox="'+esc(c.id)+'"'+(open?' open':'')+'><summary>'+(has||lAny||(c.photos||[]).length?'แก้ไขคลังที่เก็บ / โน้ต / รูปหลักฐาน':(goods&&!got?'เขียนเพิ่ม: คลังที่เก็บ · โน้ตปัญหา · รูปหลักฐาน':'เขียนโน้ตปัญหา · ใส่รูปหลักฐาน'))+'</summary>'+
+    return h+'<details class="more nbox" data-nbox="'+esc(c.id)+'"'+(open?' open':'')+'><summary>'+(has||(c.photos||[]).length?'แก้ไขโน้ต / รูปหลักฐาน':'เขียนโน้ตปัญหา · ใส่รูปหลักฐาน')+'</summary>'+
       '<form class="note" data-act="note">'+
-      (goods&&!(got&&!lAll)?'<span class="lbl">เก็บเข้าคลัง / ตำแหน่งไหน (เพื่อทำ SR)</span>'+locIn(c):'')+
       '<span class="lbl">โน้ต: แตะคำที่ใช้บ่อย หรือพิมพ์เอง</span><div class="chips">'+NOTEQ.map(function(t){return '<button class="chip" type="button" data-act="nq" data-t="'+esc(t)+'">'+esc(t)+'</button>'}).join("")+'</div>'+
       '<label class="lbl" for="n-'+esc(c.id)+'">รายละเอียด</label><textarea id="n-'+esc(c.id)+'" rows="3" maxlength="500">'+esc(c.note||"")+'</textarea><button type="submit">บันทึก</button></form>'+photoHTML(c)+'</details>'}
   function stOk(c){var v=state.st;if(v==="all")return true;if(v==="u:any")return !!urg2(c);if(v==="c:ready")return ready(c);if(v==="w:noloc")return gotGoods(c)&&!locDone(c);if(v==="w:sr")return c.rank<4&&(c.check==="ok"||c.check==="part")&&!c.sr;if(v==="x:note")return !!(c.note&&String(c.note).trim());if(v.indexOf("s:")===0)return srState(c)===v.slice(2);if(v==="n:any")return !!need(c);if(v==="n:done")return !!c.action;if(v.indexOf("n:")===0)return need(c)===v.slice(2);if(v==="a:any")return lvl(c)>=2;if(v==="a:over")return lvl(c)===3;if(v==="a:warn")return lvl(c)===2;if(v.indexOf("r:")===0)return c.rank<4&&(c.check||"")===v.slice(2);return c.typ===v.slice(2)}
@@ -605,17 +616,26 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     if(act.indexOf("a-")===0&&ACT[act.slice(2)]){state.nopen[id]=true;write(id,{action:act.slice(2),action_at:new Date().toISOString(),action_by:uid||""},"บันทึกแล้ว: "+ACT[act.slice(2)]);return}
     if(act==="pin"){write(id,{pinned:!c.pinned},c.pinned?"เลิกปักหมุดแล้ว":"ปักหมุดแล้ว");return}
     if(act==="nq"){var box=document.getElementById("n-"+id);if(box){var t=b.dataset.t,v=box.value.trim();if(v.indexOf(t)<0)box.value=v?v+" · "+t:t;if(box.focus)box.focus()}return}
+    if(act==="im"){var li1=b.closest("li"),in1=li1&&li1.querySelector("input[data-loc]");if(!in1)return;var on=in1.value.trim()!==MISS;in1.value=on?MISS:"";
+      if(li1.classList)li1.classList[on?"add":"remove"]("miss");b.textContent=on?"ยกเลิก":"ไม่ได้ของ";b.setAttribute("aria-pressed",String(on));return}
     if(act==="lq"){var lf0=b.closest("form"),li0=lf0?lf0.querySelectorAll("input[data-loc]"):[],k0,emp=0;
       for(k0=0;k0<li0.length;k0++)if(!li0[k0].value.trim())emp++;
       for(k0=0;k0<li0.length;k0++)if(!emp||!li0[k0].value.trim())li0[k0].value=b.dataset.t;return}
     if(act==="clear"){state.touched[id]=true;write(id,{check:"",checked_at:"",checked_by:""},"ยกเลิกผลตรวจแล้ว")}
-    else if(RES[act]){state.touched[id]=true;state.nopen[id]=true;write(id,{check:act,checked_at:new Date().toISOString(),checked_by:uid||""},"บันทึกแล้ว: "+RES[act][0])}
+    else if(RES[act]){state.touched[id]=true;state.nopen[id]=true;var rp={check:act,checked_at:new Date().toISOString(),checked_by:uid||""};
+      // locations typed but not saved yet go along with the result, so nothing typed is lost
+      var rf=card.querySelector?card.querySelector("form.iform"):null;
+      if(rf&&act!=="none"){var ra=readLoc(rf,c),ro=c.items.map(function(_,i){return itemLoc(c,i)}),nM=ra.filter(function(v){return v===MISS}).length,eI=-1;ra.forEach(function(v,i){if(!v&&eI<0)eI=i});
+        var stop=act==="ok"&&nM?"มีรายการที่กด “ไม่ได้ของ” อยู่ ให้กด ได้ของไม่ครบ":nM===ra.length&&ra.length?"ทุกรายการกด “ไม่ได้ของ” ให้กดปุ่ม ไม่ได้ของ":eI>-1?(act==="ok"?"ใส่คลังที่เก็บให้ครบทุกรายการก่อน":"รายการที่ได้ของให้ใส่คลัง รายการที่ไม่ได้ให้กด “ไม่ได้ของ”"):"";
+        if(stop){delete state.touched[id];state.nopen[id]=false;say(stop);if(eI>-1&&act!=="ok"||eI>-1){var fi=rf.querySelectorAll("input[data-loc]")[eI];if(fi&&fi.focus)fi.focus()}return}
+        if(ra.join("\u0001")!==ro.join("\u0001")&&ra.some(function(v){return v})){rp.loc_items=ra;rp.loc=locSum(c,ra);rp.loc_at=rp.checked_at;rp.loc_by=uid||""}}
+      write(id,rp,"บันทึกแล้ว: "+RES[act][0])}
   });
   document.addEventListener("submit",function(e){
     var lf=e.target.closest('form[data-act="loc"]');
     if(lf){e.preventDefault();var lid=lf.closest(".card").dataset.id,lc=find(lid);if(!lc)return;var la=readLoc(lf,lc),ln=la.filter(function(v){return v}).length;
-      if(!ln){say("พิมพ์ชื่อคลังก่อน");return}
-      write(lid,{loc_items:la,loc:locSum(lc,la),loc_at:new Date().toISOString(),loc_by:uid||""},ln<la.length?"บันทึกคลังแล้ว "+ln+" จาก "+la.length+" รายการ ยังเหลืออีก "+(la.length-ln):"บันทึกคลังครบแล้ว");return}
+      if(!ln&&!locAny(lc)){say("พิมพ์ชื่อคลังก่อน");return}
+      write(lid,{loc_items:la,loc:locSum(lc,la),loc_at:new Date().toISOString(),loc_by:uid||""},ln<la.length?"บันทึกแล้ว "+ln+" จาก "+la.length+" รายการ ยังเหลืออีก "+(la.length-ln):"บันทึกคลังครบทุกรายการแล้ว");return}
     var f=e.target.closest('form[data-act="note"]'); if(!f)return; e.preventDefault();
     var id=f.closest(".card").dataset.id, tx=f.querySelector("textarea").value.trim(), li=f.querySelector("input[data-loc]"), c0=find(id)||{items:[]};
     var pt={}; if(tx!==(c0.note||"")){pt.note=tx;pt.note_at=tx?new Date().toISOString():"";pt.note_by=tx?(uid||""):""}
@@ -659,7 +679,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       if(j.error==="no_db"){gate("wait","ยังไม่ได้ต่อฐานข้อมูล ให้เจ้าของระบบสร้างฐานข้อมูลใน Vercel ก่อน");return}
       if(j.error){if(!quiet)gate("wait","โหลดรายการไม่ได้ ลองเปิดใหม่อีกครั้ง");return}
       ME=j.me;uid=ME.name;state.admin=ME.role==="admin";state.canImport=state.admin;state.meta=j.meta&&j.meta.orph?j.meta:null;
-      var a=document.activeElement,typing=a&&a.closest&&a.closest('form.note,.ph,.cbox');
+      var a=document.activeElement,typing=a&&a.closest&&a.closest('form.note,.iform,.ph,.cbox');
       state.cases=j.cases.map(function(x){x.items=x.items||[];x.typ=canon(x.typ);x.sort=sortKey(x);return x}).sort(function(p,q){return p.sort-q.sort});
       state.loaded=true;gate("");
       $("who").textContent=ME.name+(ME.role==="admin"?" (แอดมิน)":"");$("impBox").hidden=ME.role!=="admin";$("pinGo").hidden=ME.role!=="admin";$("pinBox").hidden=ME.role!=="admin";
