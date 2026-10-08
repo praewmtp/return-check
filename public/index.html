@@ -310,7 +310,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
   var TYPES=["ขอคืนสินค้า - รอลูกค้าส่งของกลับ","ขอคืนสินค้า - ของกำลังส่งกลับ","ขอคืนสินค้า - ของถึงร้านแล้ว","คืนเงินอย่างเดียว - ไม่มีของกลับ","ตีกลับ - ของกำลังกลับ","ตีกลับ - ของถึงร้านแล้ว","ตีกลับ - ยังไม่ทราบว่าถึงร้าน","ส่งแล้วยกเลิก - ไม่มีพัสดุตีกลับ"];
   var OLD={"ขอคืนสินค้า - ขนส่งแจ้งส่งคืนถึงร้านแล้ว":2,"ขอคืนสินค้า - คืนเงินแล้ว มีพัสดุส่งคืน":2,"คืนเงินอย่างเดียว - ลูกค้าไม่ส่งของคืน":3,"ส่งแล้วโดนยกเลิก - ของกำลังตีกลับ":4,"ส่งแล้วโดนยกเลิก - ขนส่งแจ้งคืนถึงร้านแล้ว":5,"ส่งแล้วโดนยกเลิก - ไม่อยู่ในรายการตีกลับ":7};
   function canon(t){t=String(t||"");if(TYPES.indexOf(t)>-1)return t;if(t in OLD)return TYPES[OLD[t]];if(t.indexOf("ส่งแล้วโดนยกเลิก")===0)return TYPES[6];return t}
-  var state={tab:"todo",plat:"all",st:"all",age:"all",month:"all",days:[],q:"",cases:[],canWrite:true,touched:{},busy:{},open:{},nopen:{},pend:null,cl:null,admin:true,canImport:false,loaded:false,meta:null};
+  var state={tab:"todo",plat:"all",st:"all",age:"all",month:"all",days:[],q:"",cases:[],canWrite:true,touched:{},busy:{},open:{},nopen:{},pend:null,cl:null,cc:null,admin:true,canImport:false,loaded:false,meta:null};
   var uid=null, TOKEN=null, ME=null;
   try{TOKEN=localStorage.getItem("rc_token")}catch(_){}
   function api(a,body){var o={method:body?"POST":"GET",headers:{}};if(TOKEN)o.headers.Authorization="Bearer "+TOKEN;
@@ -384,7 +384,8 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       if(pd)return '<div class="cfm"><b>ยืนยันบันทึกว่า "'+ACT[pd]+'" ใช่ไหม</b><span class="sub">บันทึกหลังจากทำในระบบของแพลตฟอร์มแล้วเท่านั้น</span><div class="nbtns"><button class="nbtn pri" type="button" data-act="a-'+pd+'"'+dis+'>ใช่ บันทึก</button><button class="nbtn" type="button" data-act="n-cancel">ยกเลิก</button></div></div>';
       if(!state.open[c.id])return '<button class="nopen" type="button" data-act="n-open">บันทึกผลการแจ้งใน '+esc(pfm)+'</button>';
       return '<div class="nbtns">'+list.map(function(k){return '<button class="nbtn" type="button" data-act="n-pick-'+k+'">'+ACT[k]+'</button>'}).join("")+'<button class="nopen" type="button" data-act="n-cancel">ปิด</button></div>'}
-    if(c.action)return '<div class="need ok"><b>แจ้งใน '+esc(pfm)+' แล้ว: '+esc(ACT[c.action]||c.action)+'</b><span class="sub">'+esc(stamp("แจ้งเมื่อ",c.action_at,c.action_by))+' · '+esc(money)+'</span>'+(state.canWrite?'<button class="edit" type="button" data-act="a-clear">แก้ไข</button>':'')+'</div>';
+    if(c.action)return '<div class="need ok"><b>แจ้งใน '+esc(pfm)+' แล้ว: '+esc(ACT[c.action]||c.action)+'</b><span class="sub">'+esc(stamp("แจ้งเมื่อ",c.action_at,c.action_by))+' · '+esc(money)+'</span>'+(state.canWrite&&!(state.cc&&state.cc.id===c.id&&state.cc.k==="act")?'<button class="edit" type="button" data-act="a-clear">แก้ไข</button>':'')+
+      (state.canWrite&&state.cc&&state.cc.id===c.id&&state.cc.k==="act"?'<div class="cfm"><b>ยกเลิกการแจ้ง “'+esc(ACT[c.action]||c.action)+'” ใช่ไหม</b><span class="sub">ใบนี้จะกลับไปเป็นงานที่ต้องแจ้งแพลตฟอร์มอีกครั้ง</span><div class="nbtns"><button class="nbtn pri" type="button" data-act="a-clear-yes">ใช่ ยกเลิกการแจ้ง</button><button class="nbtn" type="button" data-act="cc-no">ไม่แก้ ปิด</button></div></div>':'')+'</div>';
     if(n==="dispute")return '<div class="need d"><b>ต้องเปิดข้อพิพาทใน '+esc(pfm)+'</b><span class="sub">คลังแจ้ง: '+RES[c.check][0]+' · '+esc(money)+(paid?'':' ห้ามกดยืนยันคืนเงิน')+'</span>'+(dl?'<span class="sub">'+esc(dl)+'</span>':'')+btns(["dispute","refund_ok"])+'</div>';
     if(n==="confirm")return '<div class="need c"><b>ได้ของครบ ยืนยันคืนเงินใน '+esc(pfm)+' ได้</b><span class="sub">'+esc(money)+'</span>'+btns(["refund_ok","dispute"])+'</div>';
     if(n==="review")return '<div class="need r">'+(paid?'<b>คืนเงินไปแล้วโดยไม่มีของคืน</b>':'<b>ลูกค้าขอคืนเงินโดยไม่ส่งของคืน ยังไม่คืนเงิน</b>')+'<span class="sub">'+esc(money)+' · ถ้าเหตุผลของลูกค้าไม่ถูกต้อง ให้เปิดข้อพิพาท</span>'+(dl?'<span class="sub">'+esc(dl)+'</span>':'')+btns(["dispute","accept"])+'</div>';
@@ -413,7 +414,8 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       (c.reason?'<dt>เหตุผล</dt><dd style="font-family:inherit">'+esc(c.reason)+'</dd>':'')+'</dl></details>';
     if(c.rank===4){h+='<div class="n" style="color:var(--muted)">'+esc(c.todo)+'</div>'}
     else if(c.check&&RES[c.check]){var r=RES[c.check];
-      h+='<div class="done '+r[2]+'"><span>'+r[1]+' '+r[0]+'<small>'+esc(stamp("ตรวจเมื่อ",c.checked_at,c.checked_by))+'</small></span>'+(state.canWrite?'<button class="edit" type="button" data-act="clear">แก้ไข</button>':'')+'</div>';
+      h+='<div class="done '+r[2]+'"><span>'+r[1]+' '+r[0]+'<small>'+esc(stamp("ตรวจเมื่อ",c.checked_at,c.checked_by))+'</small></span>'+(state.canWrite&&!(state.cc&&state.cc.id===c.id&&state.cc.k==="check")?'<button class="edit" type="button" data-act="clear">แก้ไข</button>':'')+'</div>'+
+        (state.canWrite&&state.cc&&state.cc.id===c.id&&state.cc.k==="check"?'<div class="cfm"><b>ยกเลิกผลตรวจ “'+r[0]+'” ใช่ไหม</b><span class="sub">ใบนี้จะย้ายกลับไปแท็บ ยังไม่ตรวจ และต้องกดผลตรวจใหม่ (คลังที่เก็บ โน้ต รูป ยังอยู่)</span><div class="nbtns"><button class="nbtn pri" type="button" data-act="clear-yes">ใช่ ยกเลิกผลตรวจ</button><button class="nbtn" type="button" data-act="cc-no">ไม่แก้ ปิด</button></div></div>':'');
 
     } else {
       var dis=(state.canWrite&&!state.busy[c.id])?'':' disabled';
@@ -608,11 +610,14 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
         if(chk(c).some(function(x){return !x[0]})&&!why){say("ต้องเขียนเหตุผลก่อน");if(wb&&wb.focus)wb.focus();return}
         var k=state.cl.k;state.cl=null;write(id,{closed:k,closed_at:new Date().toISOString(),closed_by:uid||"",closed_why:why,closed_typ:c.typ},"จบงานแล้ว: "+OUT[k]);return}
       return}
+    if(act==="cc-no"){state.cc=null;render();return}
+    if(act==="clear"){state.cc={id:id,k:"check"};render();return}
+    if(act==="a-clear"){state.cc={id:id,k:"act"};render();return}
     if(act==="n-open"){state.open[id]=true;state.pend=null;render();return}
     if(act==="n-cancel"){state.open[id]=false;state.pend=null;render();return}
     if(act.indexOf("n-pick-")===0){state.pend={id:id,k:act.slice(7)};render();return}
     if(act.indexOf("a-")===0){state.open[id]=false;state.pend=null}
-    if(act==="a-clear"){write(id,{action:"",action_at:"",action_by:""},"ยกเลิกการแจ้งแล้ว");return}
+    if(act==="a-clear-yes"){state.cc=null;write(id,{action:"",action_at:"",action_by:""},"ยกเลิกการแจ้งแล้ว");return}
     if(act.indexOf("a-")===0&&ACT[act.slice(2)]){state.nopen[id]=true;write(id,{action:act.slice(2),action_at:new Date().toISOString(),action_by:uid||""},"บันทึกแล้ว: "+ACT[act.slice(2)]);return}
     if(act==="pin"){write(id,{pinned:!c.pinned},c.pinned?"เลิกปักหมุดแล้ว":"ปักหมุดแล้ว");return}
     if(act==="nq"){var box=document.getElementById("n-"+id);if(box){var t=b.dataset.t,v=box.value.trim();if(v.indexOf(t)<0)box.value=v?v+" · "+t:t;if(box.focus)box.focus()}return}
@@ -621,7 +626,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     if(act==="lq"){var lf0=b.closest("form"),li0=lf0?lf0.querySelectorAll("input[data-loc]"):[],k0,emp=0;
       for(k0=0;k0<li0.length;k0++)if(!li0[k0].value.trim())emp++;
       for(k0=0;k0<li0.length;k0++)if(!emp||!li0[k0].value.trim())li0[k0].value=b.dataset.t;return}
-    if(act==="clear"){state.touched[id]=true;write(id,{check:"",checked_at:"",checked_by:""},"ยกเลิกผลตรวจแล้ว")}
+    if(act==="clear-yes"){state.cc=null;state.touched[id]=true;write(id,{check:"",checked_at:"",checked_by:""},"ยกเลิกผลตรวจแล้ว")}
     else if(RES[act]){state.touched[id]=true;state.nopen[id]=true;var rp={check:act,checked_at:new Date().toISOString(),checked_by:uid||""};
       // locations typed but not saved yet go along with the result, so nothing typed is lost
       var rf=card.querySelector?card.querySelector("form.iform"):null;
