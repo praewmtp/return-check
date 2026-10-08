@@ -450,14 +450,14 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     return c.items.map(function(it,i){return arr[i]?itemName(it)+" → "+arr[i]:""}).filter(function(x){return x}).join(" | ")}
   function locs(){var m={};state.cases.forEach(function(c){(c.loc_items&&c.loc_items.length?c.loc_items:[c.loc]).forEach(function(l){l=String(l||"").trim();if(l&&l!==MISS&&l.indexOf(" → ")<0)m[l]=(m[l]||0)+1})});return Object.keys(m).sort(function(x,y){return m[y]-m[x]}).slice(0,6)}
   var MISS="ไม่ได้ของ";
-  function itemsHTML(c,total){var edit=state.canWrite&&c.rank<4,L=locs(),id=esc(c.id);
+  function itemsHTML(c,total){var edit=state.canWrite&&c.rank<4,id=esc(c.id);
     var rows=c.items.map(function(it,i){var v=itemLoc(c,i),miss=v===MISS;
       return '<li'+(miss?' class="miss"':'')+'><div><div class="v">'+esc(it.var&&it.var!=="-"?it.var:it.name)+'</div><div class="n">'+esc(it.var&&it.var!=="-"?it.name:"")+'</div></div><div class="q">×'+esc(it.qty)+'</div>'+
         (edit?'<div class="lr"><input id="l-'+id+'-'+i+'" data-loc="'+i+'" type="text" maxlength="80" value="'+esc(v)+'" placeholder="เก็บเข้าคลังไหน" aria-label="คลังที่เก็บ รายการที่ '+(i+1)+'"><button type="button" class="im" data-act="im" aria-pressed="'+miss+'">'+(miss?'ยกเลิก':'ไม่ได้ของ')+'</button></div>':
           (v&&c.rank<4?'<div class="lr ro'+(miss?' n':'')+'">'+(miss?'ไม่ได้รายการนี้':'เก็บเข้าคลัง: '+esc(v))+'</div>':''))+'</li>'}).join("");
     var head='<span class="lbl">ของในกล่อง รวม '+total+' ชิ้น</span>'+(edit&&!c.check?'<b class="stp">1. ใส่คลังที่เก็บของแต่ละรายการ</b>':'');
     if(!edit)return '<div>'+head+'<ul class="items">'+rows+'</ul></div>';
-    return '<form class="iform" data-act="loc">'+head+(L.length?'<div class="chips">'+L.map(function(t){return '<button class="chip" type="button" data-act="lq" data-t="'+esc(t)+'">'+esc(t)+'</button>'}).join("")+'</div>':'')+
+    return '<form class="iform" data-act="loc">'+head+
       '<ul class="items">'+rows+'</ul>'+(c.check?'<div class="isave"><button type="submit">บันทึกคลังที่แก้</button>'+(c.loc_at?'<small>'+esc(stamp("บันทึกเมื่อ",c.loc_at,c.loc_by))+'</small>':'')+'</div>':'')+'</form>'}
   function readLoc(form,c){var arr=c.items.map(function(){return ""}),ins=form.querySelectorAll("input[data-loc]"),i;if(!c.items.length)arr=[""];
     for(i=0;i<ins.length;i++)arr[+ins[i].dataset.loc]=ins[i].value.trim();return arr}
