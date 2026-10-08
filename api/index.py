@@ -16,7 +16,7 @@ import datetime as dt
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs, unquote
 
-STAFF_KEYS = ('check', 'checked_at', 'checked_by', 'note', 'note_at', 'note_by', 'loc', 'loc_at', 'loc_by', 'pinned', 'action', 'action_at', 'action_by', 'sr_confirmed')
+STAFF_KEYS = ('check', 'checked_at', 'checked_by', 'note', 'note_at', 'note_by', 'loc', 'loc_at', 'loc_by', 'closed', 'closed_at', 'closed_by', 'closed_why', 'closed_typ', 'pinned', 'action', 'action_at', 'action_by', 'sr_confirmed')
 TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
 
 # ---------------------------------------------------------------- small helpers
@@ -867,10 +867,35 @@ class handler(BaseHTTPRequestHandler):
                     patch['pinned'] = bool(p['pinned'])
                 if 'action' in p and p['action'] in ('', 'dispute', 'refund_ok', 'accept'):
                     patch.update(action=p['action'], action_at=now if p['action'] else '', action_by=who['n'] if p['action'] else '')
+                if 'closed' in p:  # admin closes the job after everything is checked; closed cards are kept, never deleted
+                    if who['r'] != 'admin':
+                        return self._send(403, {'error': 'admin_only'})
+                    if p['closed'] not in ('', 'goods', 'money', 'loss', 'none'):
+                        return self._send(400, {'error': 'bad_outcome'})
+                    if p['closed']:
+                        cards, staff, sr = load_all()
+                        if cid not in cards:
+                            return self._send(404, {'error': 'no_card'})
+                        d, sf, why = cards[cid], staff.get(cid) or {}, str(p.get('closed_why') or '').strip()[:200]
+                        goods = (d.get('rank') or 9) < 4
+                        if goods and not sf.get('check'):
+                            return self._send(400, {'error': 'need_check'})
+                        has_sr = bool((sr.get(cid) or {}).get('sr'))
+                        if goods and sf.get('check') in ('ok', 'part') and not has_sr:
+                            return self._send(400, {'error': 'need_sr'})  # goods are back: must be booked in before the job can end
+                        if goods and sf.get('check') in ('ok', 'part') and not str(sf.get('loc') or '').strip() and not why:
+                            return self._send(400, {'error': 'need_why'})
+                        patch.update(closed=p['closed'], closed_at=now, closed_by=who['n'], closed_why=why, closed_typ=d.get('typ') or '')
+                    else:
+                        patch.update(closed='', closed_at='', closed_by='', closed_why='', closed_typ='')
                 if 'sr_confirmed' in p and who['r'] == 'admin' and p['sr_confirmed'] in ('', 'prod'):
                     patch['sr_confirmed'] = p['sr_confirmed']
                 if not patch:
                     return self._send(400, {'error': 'empty'})
+                if any(k in patch for k in ('check', 'note', 'loc', 'action')):  # a closed job is locked until the admin reopens it
+                    r = con().run("SELECT data->>'typ', staff->>'closed', staff->>'closed_typ' FROM cases WHERE id=:i", i=cid)
+                    if r and r[0][1] and (r[0][2] or r[0][0]) == r[0][0]:
+                        return self._send(409, {'error': 'closed'})
                 r = con().run('UPDATE cases SET staff = staff || CAST(:p AS jsonb), updated_at=now() WHERE id=:i RETURNING staff', p=json.dumps(patch, ensure_ascii=False), i=cid)
                 if not r:
                     return self._send(404, {'error': 'no_card'})
