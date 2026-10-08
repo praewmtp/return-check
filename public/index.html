@@ -33,6 +33,8 @@ body{margin:0}
 img{max-width:100%}
 body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:17px;line-height:1.55}
 .app{max-width:560px;margin:0 auto;padding-inline:16px;padding-block:0 48px}
+#miniBtn{font:inherit;font-size:14px;font-weight:600;min-height:40px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--brand);cursor:pointer}
+.app.mini header{padding-block:8px 6px;gap:6px} .app.mini header>*{display:none} .app.mini header>#q,.app.mini header>#miniBtn{display:block;width:100%} .app.mini .stbox,.app.mini .fbox{display:none}
 header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:14px 10px;display:grid;gap:10px}
 h1{font-size:24px;font-weight:700;margin:0;line-height:1.25}
 .prog{display:grid;gap:6px;font-size:15px;color:var(--ink);font-weight:600}
@@ -228,6 +230,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     </div>
     <label class="lbl" for="q">ค้นหา: พิมพ์รหัสคำสั่งซื้อ รหัสขอคืน หรือเลขพัสดุ (พิมพ์แค่บางส่วนก็ได้)</label>
     <input class="search" id="q" type="search" inputmode="search" autocomplete="off" placeholder="เช่น เลขคำสั่งซื้อ หรือเลขพัสดุ 4 ตัวท้าย">
+    <button type="button" id="miniBtn" aria-expanded="true">▲ ย่อส่วนบน ให้เหลือแค่ช่องค้นหา</button>
   </header>
 
 
@@ -614,6 +617,10 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
   $("tabTodo").addEventListener("click",function(){go("todo")});
   $("tabDone").addEventListener("click",function(){go("done")});
   $("tabPin").addEventListener("click",function(){go("pin")});
+  // phone: fold the sticky top down to just the search box; remembered on this device
+  function setMini(on){var a=document.querySelector(".app");if(a&&a.classList)a.classList[on?"add":"remove"]("mini");var b=$("miniBtn");b.textContent=on?"▼ แสดงเมนูทั้งหมด (แพลตฟอร์ม · แท็บ · สถานะ · ตัวกรอง)":"▲ ย่อส่วนบน ให้เหลือแค่ช่องค้นหา";b.setAttribute("aria-expanded",String(!on));state.mini=on;try{localStorage.setItem("rc_mini",on?"1":"")}catch(_){}}
+  $("miniBtn").addEventListener("click",function(){setMini(!state.mini)});
+  try{if(localStorage.getItem("rc_mini")==="1")setMini(true)}catch(_){}
   $("tabClosed").addEventListener("click",function(){go("closed")});
   $("needBox").addEventListener("click",function(e){if(!e.target.closest||!e.target.closest("#needGo"))return;state.st=nFirst();state.touched={};render();$("st").value=state.st});
   function nFirst(){return state.cases.some(function(c){return !!urg2(c)})?"u:any":state.cases.some(function(c){return need(c)==="dispute"})?"n:dispute":"n:confirm"}
