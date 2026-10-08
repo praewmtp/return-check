@@ -16,7 +16,7 @@ import datetime as dt
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs, unquote
 
-STAFF_KEYS = ('check', 'checked_at', 'checked_by', 'note', 'note_at', 'note_by', 'pinned', 'action', 'action_at', 'action_by', 'sr_confirmed')
+STAFF_KEYS = ('check', 'checked_at', 'checked_by', 'note', 'note_at', 'note_by', 'loc', 'loc_at', 'loc_by', 'pinned', 'action', 'action_at', 'action_by', 'sr_confirmed')
 TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
 
 # ---------------------------------------------------------------- small helpers
@@ -712,6 +712,8 @@ def con():
           "sr jsonb, updated_at timestamptz NOT NULL DEFAULT now())")
     c.run("CREATE TABLE IF NOT EXISTS meta (key text PRIMARY KEY, data jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now())")
     c.run("CREATE TABLE IF NOT EXISTS log (id bigserial PRIMARY KEY, at timestamptz NOT NULL DEFAULT now(), who text, what text, detail jsonb)")
+    # evidence photos (already shrunk in the browser); data is base64 text
+    c.run("CREATE TABLE IF NOT EXISTS photos (id bigserial PRIMARY KEY, case_id text NOT NULL, mime text NOT NULL, data text NOT NULL, note text, by_name text, at timestamptz NOT NULL DEFAULT now())")
     _con = c
     return c
 
@@ -797,15 +799,34 @@ class handler(BaseHTTPRequestHandler):
                 if not who:
                     return self._send(401, {'error': 'login'})
                 cards, staff, sr = load_all()
+                ph = collections.defaultdict(list)
+                for r in con().run('SELECT id, case_id, note, by_name, at FROM photos ORDER BY id'):
+                    ph[r[1]].append({'id': r[0], 'note': r[2] or '', 'by': r[3] or '', 'at': r[4].isoformat() if r[4] else ''})
                 out = []
                 for cid, c in cards.items():
                     x = dict(c)
                     x.update(sr.get(cid) or {})
                     x.update(staff.get(cid) or {})
                     x['id'] = cid
+                    x['photos'] = ph.get(cid, [])
                     out.append(x)
                 m = meta_get('sr') or {}
                 return self._send(200, {'cases': out, 'meta': m, 'me': {'name': who['n'], 'role': who['r']}, 'imports': (meta_get('imports') or [])[-5:]})
+            if a == 'photo' and method == 'GET':
+                if not self._who(auth):
+                    return self._send(401, {'error': 'login'})
+                pid = (parse_qs(urlparse(self.path).query).get('pid') or ['0'])[0]
+                r = con().run('SELECT mime, data FROM photos WHERE id=:i', i=int(pid) if pid.isdigit() else 0)
+                if not r:
+                    return self._send(404, {'error': 'no_photo'})
+                raw = base64.b64decode(r[0][1])
+                self.send_response(200)
+                self.send_header('Content-Type', r[0][0])
+                self.send_header('Cache-Control', 'private, max-age=86400')
+                self.send_header('Content-Length', str(len(raw)))
+                self.end_headers()
+                self.wfile.write(raw)
+                return
             if method != 'POST':
                 return self._send(404, {'error': 'not_found'})
             b = self._body()
@@ -839,6 +860,9 @@ class handler(BaseHTTPRequestHandler):
                 if 'note' in p:  # a problem note can be written on any card at any time; clearing a check never wipes it
                     tx = str(p['note']).strip()[:500]
                     patch.update(note=tx, note_at=now if tx else '', note_by=who['n'] if tx else '')
+                if 'loc' in p:  # where the returned goods were put, so the returns desk can write the SR
+                    lv = str(p['loc']).strip()[:80]
+                    patch.update(loc=lv, loc_at=now if lv else '', loc_by=who['n'] if lv else '')
                 if 'pinned' in p:
                     patch['pinned'] = bool(p['pinned'])
                 if 'action' in p and p['action'] in ('', 'dispute', 'refund_ok', 'accept'):
@@ -854,6 +878,35 @@ class handler(BaseHTTPRequestHandler):
                 if 'sr_confirmed' in patch:
                     self._recompute_sr()
                 return self._send(200, {'ok': True, 'staff': r[0][0]})
+            if a == 'photo_add':
+                cid, b64 = str(b.get('id') or ''), str(b.get('b64') or '')
+                if len(b64) > 950000:
+                    return self._send(413, {'error': 'too_big'})
+                try:
+                    head = base64.b64decode(b64[:24])
+                except Exception:
+                    head = b''
+                mime = 'image/jpeg' if head[:3] == b'\xff\xd8\xff' else ('image/png' if head[:8] == b'\x89PNG\r\n\x1a\n' else ('image/webp' if head[:4] == b'RIFF' and head[8:12] == b'WEBP' else ''))
+                if not mime:
+                    return self._send(400, {'error': 'not_image'})
+                if not con().run('SELECT 1 FROM cases WHERE id=:i', i=cid):
+                    return self._send(404, {'error': 'no_card'})
+                if con().run('SELECT count(*) FROM photos WHERE case_id=:i', i=cid)[0][0] >= 20:
+                    return self._send(400, {'error': 'too_many'})
+                r = con().run('INSERT INTO photos(case_id, mime, data, note, by_name) VALUES(:c, :m, :d, :n, :w) RETURNING id, at',
+                              c=cid, m=mime, d=b64, n=str(b.get('note') or '').strip()[:200], w=who['n'])
+                log(who['n'], 'photo_add', {'id': cid, 'photo': r[0][0]})
+                return self._send(200, {'ok': True, 'photo': {'id': r[0][0], 'note': str(b.get('note') or '').strip()[:200], 'by': who['n'], 'at': r[0][1].isoformat() if r[0][1] else ''}})
+            if a == 'photo_del':
+                pid = int(b.get('pid') or 0)
+                r = con().run('SELECT by_name, case_id FROM photos WHERE id=:i', i=pid)
+                if not r:
+                    return self._send(404, {'error': 'no_photo'})
+                if who['r'] != 'admin' and r[0][0] != who['n']:
+                    return self._send(403, {'error': 'not_yours'})
+                con().run('DELETE FROM photos WHERE id=:i', i=pid)
+                log(who['n'], 'photo_del', {'id': r[0][1], 'photo': pid})
+                return self._send(200, {'ok': True})
             if who['r'] != 'admin':
                 return self._send(403, {'error': 'admin_only'})
             if a == 'import':

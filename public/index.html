@@ -122,6 +122,19 @@ h1{font-size:24px;font-weight:700;margin:0;line-height:1.25}
 .prow.bad{border-left-color:var(--no)} .prow b{overflow-wrap:anywhere}
 .psum{border-radius:12px;padding:12px 14px;font-size:15px;display:grid;gap:4px;border:2px solid var(--ok);background:var(--ok-bg);color:var(--ink)}
 .psum.bad{border-color:var(--no);background:var(--no-bg)}
+.ph{display:grid;gap:8px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
+.ph input[type=text]{font:inherit;font-size:16px;min-height:46px;padding:6px 10px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);width:100%}
+.pbtn{display:flex;align-items:center;justify-content:center;text-align:center;min-height:52px;padding:6px 12px;border-radius:12px;border:2px dashed var(--brand);color:var(--brand);font-size:16px;font-weight:700;cursor:pointer;position:relative;overflow:hidden}
+.pbtn input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+.pbtn:focus-within{outline:3px solid var(--brand);outline-offset:2px}
+.pgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.pgrid figure{margin:0;display:grid;gap:4px;align-content:start;font-size:12.5px;color:var(--ink)}
+.pgrid figure.big{grid-column:1/-1}
+.pgrid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;background:var(--line);cursor:pointer;display:block}
+.pgrid figure.big img{aspect-ratio:auto;object-fit:contain}
+.pgrid figcaption{display:grid;gap:2px;overflow-wrap:anywhere} .pgrid small{color:var(--muted)}
+.pgrid button{font:inherit;font-size:13px;min-height:36px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--no);cursor:pointer}
+.pmsg{color:var(--ink);font-weight:600}
 .foot{margin-top:22px;font-size:14px;color:var(--muted);text-align:center}
 .search{font:inherit;font-size:17px;width:100%;min-height:50px;padding:8px 14px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink)}
 button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
@@ -162,6 +175,9 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
 .note textarea{font:inherit;font-size:17px;padding:8px 12px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);width:100%;resize:vertical}
 .note .chip{font-size:14px;min-height:40px;padding:2px 12px}
 .nshow{background:var(--u3-bg);color:var(--ink);border-left:6px solid var(--u3);border-radius:10px;padding:10px 12px;display:grid;gap:2px;font-size:16px}
+.note input{font:inherit;font-size:17px;min-height:50px;padding:8px 12px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);width:100%}
+.nshow.loc{background:var(--ok-bg);border-left-color:var(--ok)} .nshow.loc b{color:var(--ok)}
+.nshow.warn{background:var(--part-bg);border-left-color:var(--part)} .nshow.warn b{color:var(--part)}
 .nshow b{font-size:13.5px;color:var(--u3)} .nshow span{white-space:pre-wrap;overflow-wrap:anywhere} .nshow small{font-size:12.5px;color:var(--muted)}
 .nbox summary{color:var(--brand)}
 .note input{font:inherit;font-size:17px;min-height:50px;padding:8px 12px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);width:100%}
@@ -263,7 +279,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
   var TYPES=["ขอคืนสินค้า - รอลูกค้าส่งของกลับ","ขอคืนสินค้า - ของกำลังส่งกลับ","ขอคืนสินค้า - ของถึงร้านแล้ว","คืนเงินอย่างเดียว - ไม่มีของกลับ","ตีกลับ - ของกำลังกลับ","ตีกลับ - ของถึงร้านแล้ว","ตีกลับ - ยังไม่ทราบว่าถึงร้าน","ส่งแล้วยกเลิก - ไม่มีพัสดุตีกลับ"];
   var OLD={"ขอคืนสินค้า - ขนส่งแจ้งส่งคืนถึงร้านแล้ว":2,"ขอคืนสินค้า - คืนเงินแล้ว มีพัสดุส่งคืน":2,"คืนเงินอย่างเดียว - ลูกค้าไม่ส่งของคืน":3,"ส่งแล้วโดนยกเลิก - ของกำลังตีกลับ":4,"ส่งแล้วโดนยกเลิก - ขนส่งแจ้งคืนถึงร้านแล้ว":5,"ส่งแล้วโดนยกเลิก - ไม่อยู่ในรายการตีกลับ":7};
   function canon(t){t=String(t||"");if(TYPES.indexOf(t)>-1)return t;if(t in OLD)return TYPES[OLD[t]];if(t.indexOf("ส่งแล้วโดนยกเลิก")===0)return TYPES[6];return t}
-  var state={tab:"todo",plat:"all",st:"all",age:"all",month:"all",days:[],q:"",cases:[],canWrite:true,touched:{},busy:{},open:{},pend:null,loaded:false,meta:null};
+  var state={tab:"todo",plat:"all",st:"all",age:"all",month:"all",days:[],q:"",cases:[],canWrite:true,touched:{},busy:{},open:{},nopen:{},pend:null,loaded:false,meta:null};
   var uid=null, TOKEN=null, ME=null;
   try{TOKEN=localStorage.getItem("rc_token")}catch(_){}
   function api(a,body){var o={method:body?"POST":"GET",headers:{}};if(TOKEN)o.headers.Authorization="Bearer "+TOKEN;
@@ -361,13 +377,29 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     if(u.left<0)return '<div class="days over">ด่วน ขอคืนเงิน · เกินกำหนดแจ้ง '+(-u.left)+' วัน (ของถึง '+esc(dmy(u.at))+') '+act+'</div>';
     return '<div class="days '+(u.left===0?'over':'warn')+'">ด่วน ขอคืนเงิน · '+(u.left===0?'ต้องแจ้งภายในวันนี้':'ต้องแจ้งภายใน '+u.left+' วัน')+' (ของถึง '+esc(dmy(u.at))+') '+act+'</div>'}
   var NOTEQ=["ได้ของไม่ครบ","ไม่ได้ของ","ของเสียหาย","ได้ของผิด/ไม่ใช่ของร้าน","เปิดข้อพิพาทแล้ว","รอแพลตฟอร์มตอบ","ชนะข้อพิพาท","แพ้ข้อพิพาท"];
-  function noteHTML(c){var has=c.note&&String(c.note).trim();
-    var h=has?'<div class="nshow"><b>โน้ตปัญหา</b><span>'+esc(c.note)+'</span>'+(c.note_at?'<small>'+esc(thDate(c.note_at))+'</small>':'')+'</div>':'';
+  function locs(){var m={};state.cases.forEach(function(c){var l=(c.loc||"").trim();if(l)m[l]=(m[l]||0)+1});return Object.keys(m).sort(function(x,y){return m[y]-m[x]}).slice(0,6)}
+  function photoHTML(c){var ps=c.photos||[],id=esc(c.id);
+    return '<div class="ph" data-ph="'+id+'"><span class="lbl">รูปหลักฐาน'+(ps.length?' ('+ps.length+' รูป) แตะรูปเพื่อขยาย กดค้างเพื่อบันทึกลงเครื่อง':' (ใช้ยื่นแพลตฟอร์มเวลาได้ของไม่ครบ / ข้อพิพาท)')+'</span>'+
+      (ps.length?'<div class="pgrid">'+ps.map(function(p){var mine=ME&&(ME.role==="admin"||p.by===ME.name);
+        return '<figure'+(state.pbig===p.id?' class="big"':'')+'><img data-pid="'+p.id+'" alt="รูปหลักฐาน '+esc(p.note||"")+'"><figcaption>'+(p.note?'<b>'+esc(p.note)+'</b>':'')+'<small>'+esc(thDate(p.at))+(p.by?' · '+esc(p.by):'')+'</small>'+
+          (mine?'<button type="button" data-pact="del" data-pid="'+p.id+'">'+(state.pdel===p.id?'แตะอีกครั้งเพื่อลบ':'ลบรูป')+'</button>':'')+'</figcaption></figure>'}).join("")+'</div>':'')+
+      '<label class="lbl" for="pn-'+id+'">หมายเหตุของรูป (ใส่ก่อนเลือกรูป)</label><input id="pn-'+id+'" type="text" maxlength="200" placeholder="เช่น กล่องบุบ ขาด 2 หลอด">'+
+      '<label class="pbtn">＋ ถ่ายรูป / เลือกรูป (เลือกหลายรูปได้)<input type="file" accept="image/*" multiple data-pfile="'+id+'"></label>'+
+      '<div class="lbl pmsg" id="pm-'+id+'" aria-live="polite">'+esc(state.pmsg[c.id]||"")+'</div></div>'}
+  function noteHTML(c){var has=c.note&&String(c.note).trim(), goods=c.rank<4, got=c.check==="ok"||c.check==="part";
+    var h=(c.loc?'<div class="nshow loc"><b>เก็บเข้าคลัง</b><span>'+esc(c.loc)+'</span></div>':(goods&&got?'<div class="nshow warn"><b>ยังไม่ระบุคลังที่เก็บ</b><span>แผนกคืนต้องใช้เพื่อทำ SR</span></div>':''))+
+      (has?'<div class="nshow"><b>โน้ตปัญหา</b><span>'+esc(c.note)+'</span>'+(c.note_at?'<small>'+esc(thDate(c.note_at))+(c.note_by&&c.note_by.indexOf("u_")!==0?' · '+esc(c.note_by):'')+'</small>':'')+'</div>':'');
+    h+=((c.photos||[]).length?'<div class="nshow loc"><b>รูปหลักฐาน '+c.photos.length+' รูป</b><span>แตะ “แก้ไขคลังที่เก็บ / โน้ต / รูปหลักฐาน” เพื่อดู</span></div>':'');
     if(!state.canWrite)return h;
-    return h+'<details class="more nbox"'+(has?'':'')+'><summary>'+(has?'แก้ไขโน้ต':'เขียนโน้ตปัญหา (ข้อพิพาท · ได้ของไม่ครบ · ไม่ได้ของ)')+'</summary>'+
-      '<form class="note" data-act="note"><span class="lbl">แตะคำที่ใช้บ่อย หรือพิมพ์เอง</span><div class="chips">'+NOTEQ.map(function(t){return '<button class="chip" type="button" data-act="nq" data-t="'+esc(t)+'">'+esc(t)+'</button>'}).join("")+'</div>'+
-      '<label class="lbl" for="n-'+esc(c.id)+'">รายละเอียด</label><textarea id="n-'+esc(c.id)+'" rows="3" maxlength="500">'+esc(c.note||"")+'</textarea><button type="submit">บันทึกโน้ต</button></form></details>'}
-  function stOk(c){var v=state.st;if(v==="all")return true;if(v==="u:any")return !!urg2(c);if(v==="x:note")return !!(c.note&&String(c.note).trim());if(v.indexOf("s:")===0)return srState(c)===v.slice(2);if(v==="n:any")return !!need(c);if(v==="n:done")return !!c.action;if(v.indexOf("n:")===0)return need(c)===v.slice(2);if(v==="a:any")return lvl(c)>=2;if(v==="a:over")return lvl(c)===3;if(v==="a:warn")return lvl(c)===2;if(v.indexOf("r:")===0)return c.rank<4&&(c.check||"")===v.slice(2);return c.typ===v.slice(2)}
+    var open=!!state.nopen[c.id];
+    return h+'<details class="more nbox" data-nbox="'+esc(c.id)+'"'+(open?' open':'')+'><summary>'+(has||c.loc||(c.photos||[]).length?'แก้ไขคลังที่เก็บ / โน้ต / รูปหลักฐาน':'เขียนเพิ่ม: คลังที่เก็บ · โน้ตปัญหา · รูปหลักฐาน')+'</summary>'+
+      '<form class="note" data-act="note">'+
+      (goods?'<label class="lbl" for="l-'+esc(c.id)+'">เก็บเข้าคลัง / ตำแหน่งไหน (เพื่อทำ SR)</label>'+
+        (locs().length?'<div class="chips">'+locs().map(function(t){return '<button class="chip" type="button" data-act="lq" data-t="'+esc(t)+'">'+esc(t)+'</button>'}).join("")+'</div>':'')+
+        '<input id="l-'+esc(c.id)+'" data-loc="1" type="text" maxlength="80" value="'+esc(c.loc||"")+'" placeholder="เช่น คลัง 1 ชั้น A">':'')+
+      '<span class="lbl">โน้ต: แตะคำที่ใช้บ่อย หรือพิมพ์เอง</span><div class="chips">'+NOTEQ.map(function(t){return '<button class="chip" type="button" data-act="nq" data-t="'+esc(t)+'">'+esc(t)+'</button>'}).join("")+'</div>'+
+      '<label class="lbl" for="n-'+esc(c.id)+'">รายละเอียด</label><textarea id="n-'+esc(c.id)+'" rows="3" maxlength="500">'+esc(c.note||"")+'</textarea><button type="submit">บันทึก</button></form>'+photoHTML(c)+'</details>'}
+  function stOk(c){var v=state.st;if(v==="all")return true;if(v==="u:any")return !!urg2(c);if(v==="w:noloc")return c.rank<4&&(c.check==="ok"||c.check==="part")&&!(c.loc||"").trim();if(v==="w:sr")return c.rank<4&&(c.check==="ok"||c.check==="part")&&!c.sr;if(v==="x:note")return !!(c.note&&String(c.note).trim());if(v.indexOf("s:")===0)return srState(c)===v.slice(2);if(v==="n:any")return !!need(c);if(v==="n:done")return !!c.action;if(v.indexOf("n:")===0)return need(c)===v.slice(2);if(v==="a:any")return lvl(c)>=2;if(v==="a:over")return lvl(c)===3;if(v==="a:warn")return lvl(c)===2;if(v.indexOf("r:")===0)return c.rank<4&&(c.check||"")===v.slice(2);return c.typ===v.slice(2)}
   function evDate(c){return c.req_date||c.date||""}
   function ageOk(c){var v=state.age;if(v==="all")return true;if(!lvl(c))return false;var d=daysOpen(c);return v==="0-4"?d<=4:v==="5-7"?(d>=5&&d<=7):v==="8+"?d>7:d>14}
   function whenOk(c){var e=evDate(c);if(state.days.length)return state.days.indexOf(e)>-1;return state.month==="all"||e.slice(0,7)===state.month}
@@ -403,7 +435,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     else nb.hidden=true;
     var tl=TYPES.concat(typs.filter(function(t){return TYPES.indexOf(t)<0})).filter(function(t){return cnt(function(c){return c.typ===t})>0||state.st==="t:"+t});
     var G=[["",[["all","ทุกสถานะ ("+cntF(function(){return true})+")"]]],
-      ["งานที่ต้องทำ",[["u:any","ด่วน: ขอคืนเงิน ต้องแจ้งใน "+REPLY+" วัน ("+cntF(function(c){return !!urg2(c)})+")"],["n:dispute","ต้องเปิดข้อพิพาท ("+cntF(function(c){return need(c)==="dispute"})+")"],["n:confirm","ต้องยืนยันคืนเงิน ("+cntF(function(c){return need(c)==="confirm"})+")"],["n:review","คืนเงินอย่างเดียว รอแอดมินตรวจ ("+cntF(function(c){return need(c)==="review"})+")"],["x:note","มีโน้ตปัญหา ("+cntF(function(c){return !!(c.note&&String(c.note).trim())})+")"],["n:done","แจ้งในแพลตฟอร์มแล้ว ("+cntF(function(c){return !!c.action})+")"],["a:any","เตือนทั้งหมด ("+cntF(function(c){return lvl(c)>=2})+")"]]],
+      ["งานที่ต้องทำ",[["u:any","ด่วน: ขอคืนเงิน ต้องแจ้งใน "+REPLY+" วัน ("+cntF(function(c){return !!urg2(c)})+")"],["n:dispute","ต้องเปิดข้อพิพาท ("+cntF(function(c){return need(c)==="dispute"})+")"],["n:confirm","ต้องยืนยันคืนเงิน ("+cntF(function(c){return need(c)==="confirm"})+")"],["n:review","คืนเงินอย่างเดียว รอแอดมินตรวจ ("+cntF(function(c){return need(c)==="review"})+")"],["w:sr","ได้ของแล้ว รอทำ SR ("+cntF(function(c){return c.rank<4&&(c.check==="ok"||c.check==="part")&&!c.sr})+")"],["w:noloc","ได้ของแล้ว ยังไม่ระบุคลัง ("+cntF(function(c){return c.rank<4&&(c.check==="ok"||c.check==="part")&&!(c.loc||"").trim()})+")"],["x:note","มีโน้ตปัญหา ("+cntF(function(c){return !!(c.note&&String(c.note).trim())})+")"],["n:done","แจ้งในแพลตฟอร์มแล้ว ("+cntF(function(c){return !!c.action})+")"],["a:any","เตือนทั้งหมด ("+cntF(function(c){return lvl(c)>=2})+")"]]],
       ["เทียบกับ SR",[["s:ok","SR ตรงครบ ("+cntF(function(c){return srState(c)==="ok"})+")"],["s:diff","SR ไม่ตรงกับแพลตฟอร์ม ("+cntF(function(c){return srState(c)==="diff"})+")"],["s:eye","มี SR ต้องดูด้วยตา ("+cntF(function(c){return srState(c)==="eye"})+")"],["s:none","ยังไม่มี SR ("+cntF(function(c){return srState(c)==="none"})+")"]]],
       ["ประเภทรายการ",tl.map(function(t){return ["t:"+t,t+" ("+cntF(function(c){return c.typ===t})+")"]})],
       ["ผลตรวจของคลัง",[["r:","ผลตรวจ: ยังไม่ตรวจ ("+cntF(function(c){return c.rank<4&&!c.check})+")"],["r:ok","ผลตรวจ: ได้ของครบ ("+cntF(function(c){return c.check==="ok"})+")"],["r:part","ผลตรวจ: ได้ของไม่ครบ ("+cntF(function(c){return c.check==="part"})+")"],["r:none","ผลตรวจ: ไม่ได้ของ ("+cntF(function(c){return c.check==="none"})+")"]]]];
@@ -439,7 +471,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     var lab=[];
     if(state.age!=="all")lab.push(["age",AGES.filter(function(a){return a[0]===state.age})[0][1]]);
     if(state.days.length)lab.push(["day",state.days.length===1?"วันที่ "+dmy(state.days[0]):"เลือก "+state.days.length+" วัน"]);else if(state.month!=="all")lab.push(["month",MON[+state.month.slice(5,7)-1]+" "+(+state.month.slice(0,4)+543)]);
-    if(state.st!=="all")lab.push(["st",state.st==="x:note"?"มีโน้ตปัญหา":state.st==="u:any"?"ด่วน: ขอคืนเงิน":state.st==="a:any"?"เตือนทั้งหมด":state.st.indexOf("s:")===0?({ok:"SR ตรงครบ",diff:"SR ไม่ตรงกับแพลตฟอร์ม",eye:"มี SR ต้องดูด้วยตา",none:"ยังไม่มี SR"})[state.st.slice(2)]:state.st.indexOf("n:")===0?"แจ้งในแพลตฟอร์ม":state.st.indexOf("r:")===0?"ผลตรวจ":state.st.slice(2)]);
+    if(state.st!=="all")lab.push(["st",state.st==="w:sr"?"ได้ของแล้ว รอทำ SR":state.st==="w:noloc"?"ได้ของแล้ว ยังไม่ระบุคลัง":state.st==="x:note"?"มีโน้ตปัญหา":state.st==="u:any"?"ด่วน: ขอคืนเงิน":state.st==="a:any"?"เตือนทั้งหมด":state.st.indexOf("s:")===0?({ok:"SR ตรงครบ",diff:"SR ไม่ตรงกับแพลตฟอร์ม",eye:"มี SR ต้องดูด้วยตา",none:"ยังไม่มี SR"})[state.st.slice(2)]:state.st.indexOf("n:")===0?"แจ้งในแพลตฟอร์ม":state.st.indexOf("r:")===0?"ผลตรวจ":state.st.slice(2)]);
     $("act").innerHTML=lab.map(function(l){return '<button type="button" data-clear="'+l[0]+'">'+esc(l[1])+' ✕</button>'}).join("");
     var searching=!!state.q.trim();
     var pool=searching?state.cases:(state.tab==="pin"||byStatus)?state.cases.filter(inPlat):work;
@@ -471,7 +503,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       if(j._status===401){gate("login");return}
       if(!j.ok){say("บันทึกไม่สำเร็จ ลองกดอีกครั้ง");return}
       var c=find(id);
-      if(c){["check","checked_at","checked_by","note","note_at","note_by","pinned","action","action_at","action_by"].forEach(function(k){if(k in j.staff)c[k]=j.staff[k]})}
+      if(c){Object.keys(j.staff).forEach(function(k){c[k]=j.staff[k]})}
       say(okMsg);
     }).catch(function(){say("บันทึกไม่สำเร็จ ตรวจอินเทอร์เน็ตแล้วลองอีกครั้ง")}).then(function(){delete state.busy[id];render()});
   }
@@ -483,15 +515,20 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     if(act.indexOf("n-pick-")===0){state.pend={id:id,k:act.slice(7)};render();return}
     if(act.indexOf("a-")===0){state.open[id]=false;state.pend=null}
     if(act==="a-clear"){write(id,{action:"",action_at:"",action_by:""},"ยกเลิกการแจ้งแล้ว");return}
-    if(act.indexOf("a-")===0&&ACT[act.slice(2)]){write(id,{action:act.slice(2),action_at:new Date().toISOString(),action_by:uid||""},"บันทึกแล้ว: "+ACT[act.slice(2)]);return}
+    if(act.indexOf("a-")===0&&ACT[act.slice(2)]){state.nopen[id]=true;write(id,{action:act.slice(2),action_at:new Date().toISOString(),action_by:uid||""},"บันทึกแล้ว: "+ACT[act.slice(2)]);return}
     if(act==="pin"){write(id,{pinned:!c.pinned},c.pinned?"เลิกปักหมุดแล้ว":"ปักหมุดแล้ว");return}
     if(act==="nq"){var box=document.getElementById("n-"+id);if(box){var t=b.dataset.t,v=box.value.trim();if(v.indexOf(t)<0)box.value=v?v+" · "+t:t;if(box.focus)box.focus()}return}
+    if(act==="lq"){var lb=document.getElementById("l-"+id);if(lb){lb.value=b.dataset.t;if(lb.focus)lb.focus()}return}
     if(act==="clear"){state.touched[id]=true;write(id,{check:"",checked_at:"",checked_by:""},"ยกเลิกผลตรวจแล้ว")}
-    else if(RES[act]){state.touched[id]=true;write(id,{check:act,checked_at:new Date().toISOString(),checked_by:uid||""},"บันทึกแล้ว: "+RES[act][0])}
+    else if(RES[act]){state.touched[id]=true;state.nopen[id]=true;write(id,{check:act,checked_at:new Date().toISOString(),checked_by:uid||""},"บันทึกแล้ว: "+RES[act][0])}
   });
   document.addEventListener("submit",function(e){
     var f=e.target.closest('form[data-act="note"]'); if(!f)return; e.preventDefault();
-    var id=f.closest(".card").dataset.id, tx=f.querySelector("textarea").value.trim(); write(id,{note:tx,note_at:tx?new Date().toISOString():"",note_by:tx?(uid||""):""},tx?"บันทึกโน้ตแล้ว":"ลบโน้ตแล้ว");
+    var id=f.closest(".card").dataset.id, tx=f.querySelector("textarea").value.trim(), li=f.querySelector("input[data-loc]"), c0=find(id)||{};
+    var pt={}; if(tx!==(c0.note||"")){pt.note=tx;pt.note_at=tx?new Date().toISOString():"";pt.note_by=tx?(uid||""):""}
+    if(li){var lv=li.value.trim(); if(lv!==(c0.loc||"")){pt.loc=lv;pt.loc_at=lv?new Date().toISOString():"";pt.loc_by=lv?(uid||""):""}}
+    state.nopen[id]=false; if(!Object.keys(pt).length){say("ไม่มีอะไรเปลี่ยน");render();return}
+    write(id,pt,"บันทึกแล้ว");
   });
   $("plats").addEventListener("click",function(e){var b=e.target.closest("button[data-plat]");if(!b)return;state.plat=b.dataset.plat;state.touched={};render()});
   function clearF(k){if(k==="q"){state.q="";$("q").value="";render();return}if(k==="plat"||k==="all")state.plat="all";if(k==="age"||k==="all")state.age="all";if(k==="day"||k==="all")state.days=[];if(k==="month"||k==="all")state.month="all";if(k==="st"||k==="all"){state.st="all";$("st").value="all"}state.touched={};render()}
@@ -524,7 +561,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       if(j.error==="no_db"){gate("wait","ยังไม่ได้ต่อฐานข้อมูล ให้เจ้าของระบบสร้างฐานข้อมูลใน Vercel ก่อน");return}
       if(j.error){if(!quiet)gate("wait","โหลดรายการไม่ได้ ลองเปิดใหม่อีกครั้ง");return}
       ME=j.me;uid=ME.name;state.meta=j.meta&&j.meta.orph?j.meta:null;
-      var a=document.activeElement,typing=a&&a.closest&&a.closest('form[data-act="note"]');
+      var a=document.activeElement,typing=a&&a.closest&&a.closest('form[data-act="note"],.ph');
       state.cases=j.cases.map(function(x){x.items=x.items||[];x.typ=canon(x.typ);x.sort=sortKey(x);return x}).sort(function(p,q){return p.sort-q.sort});
       state.loaded=true;gate("");
       $("who").textContent=ME.name+(ME.role==="admin"?" (แอดมิน)":"");$("impBox").hidden=ME.role!=="admin";
@@ -584,6 +621,40 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       $("resOut").textContent="กำลังย้ายข้อมูล…";
       api("restore",o).then(function(j){$("resOut").textContent=j.ok?"ย้ายแล้ว "+j.cards+" ใบ":"ย้ายไม่ได้: "+(j.error||"");if(j.ok)load(true)}).catch(function(){$("resOut").textContent="ส่งไฟล์ไม่ได้"})};
     r.readAsText(f)});
+  /* ---------- evidence photos ---------- */
+  state.pmsg={};state.pbig=null;state.pdel=null;
+  var PURL={}, PWAIT={};
+  function fillPhotos(){Array.prototype.forEach.call(document.querySelectorAll("details[open] img[data-pid]"),function(im){
+    var pid=im.dataset.pid; if(PURL[pid]){if(im.getAttribute("src")!==PURL[pid])im.src=PURL[pid];return}
+    if(PWAIT[pid])return; PWAIT[pid]=true;
+    fetch("/api?a=photo&pid="+pid,{headers:{Authorization:"Bearer "+TOKEN}}).then(function(r){if(!r.ok)throw 0;return r.blob()}).then(function(bl){PURL[pid]=URL.createObjectURL(bl);delete PWAIT[pid];fillPhotos()}).catch(function(){delete PWAIT[pid]})})}
+  var render0=render; render=function(){render0();fillPhotos()};
+  document.addEventListener("toggle",function(e){var d=e.target;if(!d||!d.dataset||!d.dataset.nbox)return;state.nopen[d.dataset.nbox]=d.open;if(d.open)fillPhotos()},true);
+  function shrink(file,side,q){return new Promise(function(res,rej){var u=URL.createObjectURL(file),im=new Image();
+    im.onload=function(){var w=im.naturalWidth,h=im.naturalHeight,k=Math.min(1,side/Math.max(w,h)),cv=document.createElement("canvas");cv.width=Math.max(1,Math.round(w*k));cv.height=Math.max(1,Math.round(h*k));
+      cv.getContext("2d").drawImage(im,0,0,cv.width,cv.height);URL.revokeObjectURL(u);var d=cv.toDataURL("image/jpeg",q);res(d.slice(d.indexOf(",")+1))};
+    im.onerror=function(){URL.revokeObjectURL(u);rej()};im.src=u})}
+  function small(file){return shrink(file,1600,0.8).then(function(b){return b.length<=900000?b:shrink(file,1280,0.65).then(function(b2){return b2.length<=900000?b2:shrink(file,1000,0.5)})})}
+  document.addEventListener("change",function(e){var inp=e.target;if(!inp||!inp.dataset||!inp.dataset.pfile)return;
+    var id=inp.dataset.pfile,c=find(id),files=Array.prototype.slice.call(inp.files||[]);if(!c||!files.length||state.busy.photo)return;
+    var nb=document.getElementById("pn-"+id),note=nb?nb.value.trim():"",msg=document.getElementById("pm-"+id),done=0,bad=0,stop="";
+    if((c.photos||[]).length+files.length>20){state.pmsg[id]="การ์ดหนึ่งใบเก็บได้ 20 รูป ตอนนี้มี "+(c.photos||[]).length+" รูป เลือกใหม่ให้น้อยลง";render();return}
+    state.busy.photo=true;state.nopen[id]=true;c.photos=c.photos||[];
+    function next(i){
+      if(i>=files.length||stop){delete state.busy.photo;state.pmsg[id]=stop||("ส่งรูปแล้ว "+done+" รูป"+(bad?" · ส่งไม่ได้ "+bad+" รูป ให้เลือกรูปนั้นใหม่":""));render();return}
+      if(msg)msg.textContent="กำลังส่งรูป "+(i+1)+" / "+files.length+" … อย่าปิดหน้านี้";
+      small(files[i]).then(function(b){return api("photo_add",{id:id,b64:b,note:note})}).then(function(j){
+        if(j._status===401){stop="ต้องเข้าใช้งานใหม่ แล้วส่งรูปอีกครั้ง";gate("login")}
+        else if(j.ok){c.photos.push(j.photo);done++}
+        else{bad++;if(j.error==="too_many")stop="การ์ดนี้ครบ 20 รูปแล้ว (ส่งได้ "+done+" รูป)"}
+      }).catch(function(){bad++}).then(function(){next(i+1)})}
+    next(0)});
+  document.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;
+    var im=t.closest("img[data-pid]");if(im){var p=+im.dataset.pid;state.pbig=state.pbig===p?null:p;state.pdel=null;render();return}
+    var b=t.closest("button[data-pact]");if(!b)return;var pid=+b.dataset.pid,card=b.closest(".card"),c=card&&find(card.dataset.id);if(!c)return;
+    if(state.pdel!==pid){state.pdel=pid;render();return}
+    state.pdel=null;api("photo_del",{pid:pid}).then(function(j){if(j._status===401){gate("login");return}
+      if(j.ok){c.photos=(c.photos||[]).filter(function(x){return x.id!==pid});if(PURL[pid]){URL.revokeObjectURL(PURL[pid]);delete PURL[pid]}say("ลบรูปแล้ว")}else say(j.error==="not_yours"?"ลบได้เฉพาะรูปที่ตัวเองส่ง":"ลบรูปไม่สำเร็จ");render()}).catch(function(){say("ลบรูปไม่สำเร็จ");render()})});
   gate("wait");load();
 })();
 </script>
