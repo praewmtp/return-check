@@ -210,7 +210,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
 </div>
 <div class="app" lang="th">
   <header>
-    <div class="me"><h1>ตรวจรับของคืน</h1><span><span id="who"></span> <button type="button" id="pinGo">เปลี่ยนรหัส</button> <button type="button" id="logout">ออก</button></span></div>
+    <div class="me"><h1>ตรวจรับของคืน</h1><span><span id="who"></span> <button type="button" id="pinGo" hidden>เปลี่ยนรหัส</button> <button type="button" id="logout">ออก</button></span></div>
     <div class="plats" id="plats" role="group" aria-label="เลือกแพลตฟอร์ม"></div>
     <div class="prog" aria-live="polite"><span id="progText">กำลังโหลด…</span><span class="track" aria-hidden="true"><span class="fill" id="progFill"></span></span></div>
     <div class="tabs" role="group" aria-label="เลือกรายการ">
@@ -250,9 +250,9 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     <summary id="orphSum">SR ที่ไม่มีคำสั่งซื้อในหน้านี้</summary>
     <div class="list" id="orphList"></div>
   </details>
-  <details class="admin" id="pinBox"><summary>เปลี่ยนรหัส PIN</summary>
+  <details class="admin" id="pinBox" hidden><summary>เปลี่ยนรหัส PIN</summary>
         <form class="imp" id="pinForm" autocomplete="off">
-          <label class="lbl" for="pcOld">PIN แอดมินตอนนี้ (ต้องรู้รหัสแอดมินจึงเปลี่ยนได้)</label><input class="pin" id="pcOld" type="password" autocomplete="current-password" required>
+          <label class="lbl" for="pcOld">PIN แอดมินตอนนี้ (รหัสเก่า)</label><input class="pin" id="pcOld" type="password" autocomplete="current-password" required>
           <label class="lbl" for="pcStaff">PIN พนักงานใหม่ (อย่างน้อย 4 ตัว) เว้นว่าง = ไม่เปลี่ยน</label><input class="pin" id="pcStaff" type="password" autocomplete="new-password">
           <label class="lbl" for="pcAdmin">PIN แอดมินใหม่ (อย่างน้อย 6 ตัว) เว้นว่าง = ไม่เปลี่ยน</label><input class="pin" id="pcAdmin" type="password" autocomplete="new-password">
           <button class="go" type="submit">เปลี่ยนรหัส</button><div class="lbl" id="pcOut" role="status"></div>
@@ -574,7 +574,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       var a=document.activeElement,typing=a&&a.closest&&a.closest('form[data-act="note"],.ph');
       state.cases=j.cases.map(function(x){x.items=x.items||[];x.typ=canon(x.typ);x.sort=sortKey(x);return x}).sort(function(p,q){return p.sort-q.sort});
       state.loaded=true;gate("");
-      $("who").textContent=ME.name+(ME.role==="admin"?" (แอดมิน)":"");$("impBox").hidden=ME.role!=="admin";
+      $("who").textContent=ME.name+(ME.role==="admin"?" (แอดมิน)":"");$("impBox").hidden=ME.role!=="admin";$("pinGo").hidden=ME.role!=="admin";$("pinBox").hidden=ME.role!=="admin";
       var h=j.imports||[];$("impHist").textContent=h.length?"นำเข้าล่าสุด: "+h.map(function(x){return thDate(x.at)+" โดย "+x.by+" (+"+x["new"]+" ใบ)"}).reverse().slice(0,3).join(" · "):"";
       if(!typing)render();
     }).catch(function(){if(!quiet)gate("wait","เชื่อมต่อไม่ได้ ตรวจอินเทอร์เน็ตแล้วเปิดใหม่")});
