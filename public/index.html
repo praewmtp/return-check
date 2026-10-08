@@ -210,7 +210,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
 </div>
 <div class="app" lang="th">
   <header>
-    <div class="me"><h1>ตรวจรับของคืน</h1><span><span id="who"></span> <button type="button" id="logout">ออก</button></span></div>
+    <div class="me"><h1>ตรวจรับของคืน</h1><span><span id="who"></span> <button type="button" id="pinGo">เปลี่ยนรหัส</button> <button type="button" id="logout">ออก</button></span></div>
     <div class="plats" id="plats" role="group" aria-label="เลือกแพลตฟอร์ม"></div>
     <div class="prog" aria-live="polite"><span id="progText">กำลังโหลด…</span><span class="track" aria-hidden="true"><span class="fill" id="progFill"></span></span></div>
     <div class="tabs" role="group" aria-label="เลือกรายการ">
@@ -250,6 +250,15 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     <summary id="orphSum">SR ที่ไม่มีคำสั่งซื้อในหน้านี้</summary>
     <div class="list" id="orphList"></div>
   </details>
+  <details class="admin" id="pinBox"><summary>เปลี่ยนรหัส PIN</summary>
+        <form class="imp" id="pinForm" autocomplete="off">
+          <label class="lbl" for="pcOld">PIN แอดมินตอนนี้ (ต้องรู้รหัสแอดมินจึงเปลี่ยนได้)</label><input class="pin" id="pcOld" type="password" autocomplete="current-password" required>
+          <label class="lbl" for="pcStaff">PIN พนักงานใหม่ (อย่างน้อย 4 ตัว) เว้นว่าง = ไม่เปลี่ยน</label><input class="pin" id="pcStaff" type="password" autocomplete="new-password">
+          <label class="lbl" for="pcAdmin">PIN แอดมินใหม่ (อย่างน้อย 6 ตัว) เว้นว่าง = ไม่เปลี่ยน</label><input class="pin" id="pcAdmin" type="password" autocomplete="new-password">
+          <button class="go" type="submit">เปลี่ยนรหัส</button><div class="lbl" id="pcOut" role="status"></div>
+          <span class="lbl">เปลี่ยนแล้ว ทุกเครื่องที่เข้าอยู่ต้องใส่ PIN ใหม่ ข้อมูลในระบบไม่หาย</span>
+        </form>
+  </details>
   <details class="admin" id="impBox" hidden>
     <summary>แอดมิน: นำเข้าไฟล์ประจำสัปดาห์</summary>
     <div class="imp">
@@ -262,15 +271,6 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       <details class="admin"><summary>ย้ายข้อมูลเดิมเข้าเว็บนี้ (ทำครั้งเดียว)</summary>
         <div class="imp"><label class="lbl" for="resFile">เลือกไฟล์สำรอง .json ที่ได้จาก Claude</label><input id="resFile" type="file" accept=".json">
         <button class="go" type="button" id="resGo">ย้ายข้อมูลเข้า</button><div class="lbl" id="resOut" aria-live="polite"></div></div>
-      </details>
-      <details class="admin"><summary>เปลี่ยนรหัส PIN</summary>
-        <form class="imp" id="pinForm" autocomplete="off">
-          <label class="lbl" for="pcOld">PIN แอดมินตอนนี้ (ยืนยันว่าเป็นคุณ)</label><input class="pin" id="pcOld" type="password" autocomplete="current-password" required>
-          <label class="lbl" for="pcStaff">PIN พนักงานใหม่ (อย่างน้อย 4 ตัว) เว้นว่าง = ไม่เปลี่ยน</label><input class="pin" id="pcStaff" type="password" autocomplete="new-password">
-          <label class="lbl" for="pcAdmin">PIN แอดมินใหม่ (อย่างน้อย 6 ตัว) เว้นว่าง = ไม่เปลี่ยน</label><input class="pin" id="pcAdmin" type="password" autocomplete="new-password">
-          <button class="go" type="submit">เปลี่ยนรหัส</button><div class="lbl" id="pcOut" role="status"></div>
-          <span class="lbl">เปลี่ยนแล้ว ทุกเครื่องที่เข้าอยู่ต้องใส่ PIN ใหม่ ข้อมูลในระบบไม่หาย</span>
-        </form>
       </details>
     </div>
   </details>
@@ -631,6 +631,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       $("resOut").textContent="กำลังย้ายข้อมูล…";
       api("restore",o).then(function(j){$("resOut").textContent=j.ok?"ย้ายแล้ว "+j.cards+" ใบ":"ย้ายไม่ได้: "+(j.error||"");if(j.ok)load(true)}).catch(function(){$("resOut").textContent="ส่งไฟล์ไม่ได้"})};
     r.readAsText(f)});
+  $("pinGo").addEventListener("click",function(){var d=$("pinBox");d.open=true;if(d.scrollIntoView)d.scrollIntoView({block:"start"});if($("pcOld").focus)$("pcOld").focus()});
   $("pinForm").addEventListener("submit",function(e){e.preventDefault();var o=$("pcOut"),s=$("pcStaff").value,ad=$("pcAdmin").value;
     if(!s&&!ad){o.textContent="ใส่ PIN ใหม่อย่างน้อย 1 ช่อง";return}
     o.textContent="กำลังเปลี่ยน…";

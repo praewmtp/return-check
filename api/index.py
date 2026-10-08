@@ -907,9 +907,7 @@ class handler(BaseHTTPRequestHandler):
                 con().run('DELETE FROM photos WHERE id=:i', i=pid)
                 log(who['n'], 'photo_del', {'id': r[0][1], 'photo': pid})
                 return self._send(200, {'ok': True})
-            if who['r'] != 'admin':
-                return self._send(403, {'error': 'admin_only'})
-            if a == 'pins':  # change PINs: needs the current admin PIN again; everyone is signed out afterwards
+            if a == 'pins':  # change PINs: any signed-in phone may ask, but only with the current admin PIN; everyone is signed out afterwards
                 if not hmac.compare_digest(_hash(str(b.get('admin_pin') or ''), auth['salt']), auth['admin']):
                     time.sleep(1.2)
                     return self._send(401, {'error': 'bad_pin'})
@@ -928,7 +926,9 @@ class handler(BaseHTTPRequestHandler):
                 new['secret'] = base64.urlsafe_b64encode(os.urandom(32)).decode()
                 meta_set('auth', new)
                 log(who['n'], 'pins', {'staff': bool(sp), 'admin': bool(ap)})
-                return self._send(200, {'ok': True, 'token': make_token(new, who['n'], 'admin')})
+                return self._send(200, {'ok': True, 'token': make_token(new, who['n'], who['r'])})
+            if who['r'] != 'admin':
+                return self._send(403, {'error': 'admin_only'})
             if a == 'import':
                 files = [(f.get('name') or 'file', base64.b64decode(f.get('b64') or '')) for f in (b.get('files') or [])]
                 if not files:
