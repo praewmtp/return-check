@@ -34,8 +34,9 @@ img{max-width:100%}
 body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:17px;line-height:1.55}
 .app{max-width:560px;margin:0 auto;padding-inline:16px;padding-block:0 48px}
 #miniBtn{font:inherit;font-size:14px;font-weight:600;min-height:40px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--brand);cursor:pointer}
-.app.mini header{padding-block:8px 6px;gap:6px} .app.mini header>*{display:none} .app.mini header>#q,.app.mini header>#miniBtn{display:block;width:100%} .app.mini .stbox,.app.mini .fbox{display:none}
-header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:14px 10px;display:grid;gap:10px}
+.app.mini header,.app.mini .sbar>.lbl{display:none} .app.mini .stbox,.app.mini .fbox{display:none}
+header{padding-block:14px 6px;display:grid;gap:10px}
+.sbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:6px 8px;display:grid;gap:6px;margin-bottom:6px}
 h1{font-size:24px;font-weight:700;margin:0;line-height:1.25}
 .prog{display:grid;gap:6px;font-size:15px;color:var(--ink);font-weight:600}
 .prog .track{height:10px;border-radius:5px;background:var(--line);overflow:hidden}
@@ -71,6 +72,7 @@ h1{font-size:24px;font-weight:700;margin:0;line-height:1.25}
 .fbox>summary .n{font-size:14px;font-weight:700;background:var(--brand);color:var(--card);border-radius:999px;padding:2px 10px}
 .fbody{padding:4px 14px 14px;display:grid;gap:14px}
 .fgrp{display:grid;gap:6px}
+.frow{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px} .fbody label.lbl{display:grid;gap:4px} .fbody input.sel{min-width:0}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{font:inherit;font-weight:600;font-size:15px;min-height:44px;padding:4px 14px;border-radius:999px;border:2px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
 .chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
@@ -247,10 +249,12 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       <button class="tab" id="tabClosed" type="button" aria-pressed="false">จบแล้ว</button>
       <button class="tab" id="tabPin" type="button" aria-pressed="false">ปักหมุด</button>
     </div>
-    <label class="lbl" for="q">ค้นหา: พิมพ์รหัสคำสั่งซื้อ รหัสขอคืน หรือเลขพัสดุ (พิมพ์แค่บางส่วนก็ได้)</label>
+  </header>
+  <div class="sbar">
+    <label class="lbl" for="q">ค้นหา: คำสั่งซื้อ / รหัสขอคืน / เลขพัสดุ</label>
     <input class="search" id="q" type="search" inputmode="search" autocomplete="off" placeholder="เช่น เลขคำสั่งซื้อ หรือเลขพัสดุ 4 ตัวท้าย">
     <button type="button" id="miniBtn" aria-expanded="true">▲ ย่อส่วนบน ให้เหลือแค่ช่องค้นหา</button>
-  </header>
+  </div>
 
 
 
@@ -258,9 +262,9 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
   <details class="fbox" id="fbox">
     <summary><span>ตัวกรอง</span><span class="n" id="fcount" hidden></span></summary>
     <div class="fbody">
-      <div class="fgrp"><span class="lbl">ค้างมาแล้วกี่วัน (นับจากวันขอคืน/วันยกเลิก)</span><div class="chips" id="ages" role="group" aria-label="ค้างมาแล้วกี่วัน (นับจากวันขอคืน/วันยกเลิก)"></div></div>
-      <div class="fgrp"><span class="lbl">เดือนที่เกิดเรื่อง</span><div class="chips" id="months" role="group" aria-label="เดือนที่เกิดเรื่อง"></div></div>
-      <div class="fgrp"><span class="lbl" id="daysLbl">วันที่เกิดเรื่อง (แตะเลือกได้หลายวัน)</span><div class="chips" id="days" role="group" aria-labelledby="daysLbl"></div><button class="clr" type="button" id="dayClr" hidden>ล้างวันที่เลือก</button></div>
+      <div class="frow"><label class="lbl">ปี<select class="sel" id="fYear"></select></label><label class="lbl">เดือนที่เกิดเรื่อง<select class="sel" id="fMon"></select></label></div>
+      <div class="frow"><label class="lbl">ตั้งแต่วันที่<input class="sel" id="fFrom" type="date"></label><label class="lbl">ถึงวันที่<input class="sel" id="fTo" type="date"></label></div>
+      <label class="lbl">ค้างมาแล้วกี่วัน (นับจากวันขอคืน/วันยกเลิก)<select class="sel" id="fAge"></select></label>
       <button class="clr" type="button" id="clrAll">ล้างตัวกรองทั้งหมด</button>
     </div>
   </details>
@@ -330,7 +334,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
   var TYPES=["ขอคืนสินค้า - รอลูกค้าส่งของกลับ","ขอคืนสินค้า - ของกำลังส่งกลับ","ขอคืนสินค้า - ของถึงร้านแล้ว","คืนเงินอย่างเดียว - ไม่มีของกลับ","ตีกลับ - ของกำลังกลับ","ตีกลับ - ของถึงร้านแล้ว","ตีกลับ - ยังไม่ทราบว่าถึงร้าน","ส่งแล้วยกเลิก - ไม่มีพัสดุตีกลับ"];
   var OLD={"ขอคืนสินค้า - ขนส่งแจ้งส่งคืนถึงร้านแล้ว":2,"ขอคืนสินค้า - คืนเงินแล้ว มีพัสดุส่งคืน":2,"คืนเงินอย่างเดียว - ลูกค้าไม่ส่งของคืน":3,"ส่งแล้วโดนยกเลิก - ของกำลังตีกลับ":4,"ส่งแล้วโดนยกเลิก - ขนส่งแจ้งคืนถึงร้านแล้ว":5,"ส่งแล้วโดนยกเลิก - ไม่อยู่ในรายการตีกลับ":7};
   function canon(t){t=String(t||"");if(TYPES.indexOf(t)>-1)return t;if(t in OLD)return TYPES[OLD[t]];if(t.indexOf("ส่งแล้วโดนยกเลิก")===0)return TYPES[6];return t}
-  var state={tab:"todo",plat:"all",st:"all",age:"all",month:"all",days:[],q:"",cases:[],canWrite:true,touched:{},busy:{},open:{},nopen:{},pend:null,cl:null,cc:null,draft:{},admin:true,canImport:false,loaded:false,meta:null};
+  var state={tab:"todo",plats:[],st:"all",age:"all",year:"all",mon:"all",from:"",to:"",q:"",cases:[],canWrite:true,touched:{},busy:{},open:{},nopen:{},pend:null,cl:null,cc:null,draft:{},admin:true,canImport:false,loaded:false,meta:null};
   var uid=null, TOKEN=null, ME=null;
   try{TOKEN=localStorage.getItem("rc_token")}catch(_){}
   function api(a,body){var o={method:body?"POST":"GET",headers:{}};if(TOKEN)o.headers.Authorization="Bearer "+TOKEN;
@@ -529,14 +533,19 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
   function stOk(c){var v=state.st;if(v==="all")return true;if(v==="u:any")return !!urg2(c);if(v==="c:ready")return ready(c);if(v==="w:noloc")return gotGoods(c)&&!locDone(c);if(v==="w:sr")return c.rank<4&&(c.check==="ok"||c.check==="part")&&!c.sr;if(v==="x:note")return !!(c.note&&String(c.note).trim());if(v.indexOf("s:")===0)return srState(c)===v.slice(2);if(v==="n:any")return !!need(c);if(v==="n:done")return !!c.action;if(v.indexOf("n:")===0)return need(c)===v.slice(2);if(v==="a:any")return lvl(c)>=2;if(v==="a:over")return lvl(c)===3;if(v==="a:warn")return lvl(c)===2;if(v.indexOf("r:")===0)return c.rank<4&&(c.check||"")===v.slice(2);return c.typ===v.slice(2)}
   function evDate(c){return c.req_date||c.date||""}
   function ageOk(c){var v=state.age;if(v==="all")return true;if(!lvl(c))return false;var d=daysOpen(c);return v==="0-4"?d<=4:v==="5-7"?(d>=5&&d<=7):v==="8+"?d>7:d>14}
-  function whenOk(c){var e=evDate(c);if(state.days.length)return state.days.indexOf(e)>-1;return state.month==="all"||e.slice(0,7)===state.month}
-  function nFilters(){return (state.st!=="all")+(state.age!=="all")+((state.month!=="all"||state.days.length)?1:0)}
+  function dateOn(){return state.year!=="all"||state.mon!=="all"||!!state.from||!!state.to}
+  function whenOk(c){if(!dateOn())return true;var e=evDate(c);if(!e)return false;
+    return (state.year==="all"||e.slice(0,4)===state.year)&&(state.mon==="all"||e.slice(5,7)===state.mon)&&(!state.from||e>=state.from)&&(!state.to||e.slice(0,10)<=state.to)}
+  function whenTxt(){var t=[];if(state.mon!=="all")t.push(MON[+state.mon-1]);if(state.year!=="all")t.push(String(+state.year+543));
+    if(state.from||state.to)t.push((state.from?dmy(state.from):"…")+" ถึง "+(state.to?dmy(state.to):"…"));return t.join(" ")}
+  function nFilters(){return (state.st!=="all")+(state.age!=="all")+(dateOn()?1:0)}
   // typing in the search box looks through EVERY card: all tabs, all filters, admin cards too
   function qMatch(c){var q=state.q.trim().toUpperCase().replace(/\s+/g,"");if(!q)return true;return [c.order,c.out_track,c.req,c.ret_track].join(" ").toUpperCase().indexOf(q)>-1||c.items.map(function(i){return i.var+" "+i.name}).join(" ").toUpperCase().replace(/\s+/g,"").indexOf(q)>-1}
-  function match(c){if(state.plat!=="all"&&c.platform!==state.plat)return false;if(!stOk(c)||!ageOk(c)||!whenOk(c))return false;var q=state.q.trim().toUpperCase();if(!q)return true;return [c.order,c.out_track,c.req,c.ret_track].concat(c.items.map(function(i){return i.var+" "+i.name})).join(" ").toUpperCase().indexOf(q)>-1}
+  function pOk(p){return !state.plats.length||state.plats.indexOf(p)>-1}
+  function match(c){if(!pOk(c.platform))return false;if(!stOk(c)||!ageOk(c)||!whenOk(c))return false;var q=state.q.trim().toUpperCase();if(!q)return true;return [c.order,c.out_track,c.req,c.ret_track].concat(c.items.map(function(i){return i.var+" "+i.name})).join(" ").toUpperCase().indexOf(q)>-1}
   function render(){
     var arch=state.tab==="closed";
-    var inP0=function(c){return state.plat==="all"||c.platform===state.plat};
+    var inP0=function(c){return pOk(c.platform)};
     var inPlat=function(c){return inP0(c)&&isClosed(c)===arch};
     var P0=state.cases.filter(inP0),n1=P0.filter(function(c){return stage(c)===1}).length,n2=P0.filter(function(c){return stage(c)===2}).length,n3=P0.filter(function(c){return stage(c)===3}).length,nP=P0.filter(function(c){return stage(c)===1.5}).length;
     var allWork=state.cases.filter(function(c){return c.rank<4});
@@ -545,7 +554,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     $("plats").innerHTML=[["all","ทั้งหมด",allWork]].concat(names.map(function(n){return [n,n,allWork.filter(function(c){return c.platform===n})]})).map(function(p){
       var left=p[2].filter(function(c){return stage(c)===1}).length;
       var tot=state.cases.filter(function(c){return p[0]==="all"||c.platform===p[0]}).length;
-      return '<button class="plat" type="button" data-plat="'+esc(p[0])+'" aria-pressed="'+(state.plat===p[0])+'">'+esc(p[1])+'<b class="pn">'+tot+' ใบ</b><small>ค้างตรวจ '+left+'</small></button>'}).join("");
+      return '<button class="plat" type="button" data-plat="'+esc(p[0])+'" aria-pressed="'+(p[0]==="all"?!state.plats.length:state.plats.indexOf(p[0])>-1)+'">'+esc(p[1])+'<b class="pn">'+tot+' ใบ</b><small>ค้างตรวจ '+left+'</small></button>'}).join("");
     var done=work.filter(function(c){return c.check}).length;
     var pinN=state.cases.filter(function(c){return c.pinned&&inP0(c)&&!isClosed(c)}).length;
     var typs=[];state.cases.forEach(function(c){if(inPlat(c)&&typs.indexOf(c.typ)<0)typs.push(c.typ)});
@@ -574,7 +583,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     if(!opts.some(function(o){return o[0]===state.st}))state.st="all";
 
 
-    var M=state.meta,O=M&&M.orph?M.orph.filter(function(o){return state.plat==="all"||o.platform===state.plat}):[];
+    var M=state.meta,O=M&&M.orph?M.orph.filter(function(o){return pOk(o.platform)}):[];
     var oq=state.q.trim().toUpperCase().replace(/\s+/g,""); if(oq)O=O.filter(function(o){return (o.order+" "+o.sr).toUpperCase().indexOf(oq)>-1});
     var on={};O.forEach(function(o){on[o.order]=1});
     $("orphBox").hidden=!O.length; if(oq&&O.length)$("orphBox").open=true;
@@ -588,21 +597,18 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     $("tabClosed").setAttribute("aria-pressed",arch&&state.st==="all");
     $("tabProb").textContent="ติดปัญหา ("+nP+")";$("tabProb").setAttribute("data-n",String(nP));$("tabProb").setAttribute("aria-pressed",state.tab==="prob"&&state.st==="all");
     $("tabTodo").setAttribute("aria-pressed",state.tab==="todo"&&state.st==="all"); $("tabDone").setAttribute("aria-pressed",state.tab==="done"&&state.st==="all");
-    var byStatus=state.st!=="all"||state.age!=="all"||state.month!=="all"||state.days.length>0;
-    $("ages").innerHTML=AGES.map(function(a){var n=a[0]==="all"?"":" ("+state.cases.filter(function(c){var k=state.age;state.age=a[0];var ok=inPlat(c)&&ageOk(c);state.age=k;return ok}).length+")";
-      return '<button class="chip" type="button" data-age="'+a[0]+'" aria-pressed="'+(state.age===a[0])+'">'+a[1]+n+'</button>'}).join("");
-    var ms={};state.cases.forEach(function(c){var e=evDate(c);if(inPlat(c)&&e)ms[e.slice(0,7)]=(ms[e.slice(0,7)]||0)+1});
-    $("months").innerHTML='<button class="chip" type="button" data-month="all" aria-pressed="'+(state.month==="all")+'">ทุกเดือน</button>'+Object.keys(ms).sort().reverse().map(function(m){
-      return '<button class="chip" type="button" data-month="'+m+'" aria-pressed="'+(state.month===m)+'">'+MON[+m.slice(5,7)-1]+' '+(+m.slice(0,4)+543)+' ('+ms[m]+')</button>'}).join("");
-    var ds={};state.cases.forEach(function(c){var e=evDate(c);if(inPlat(c)&&e&&(state.month==="all"||e.slice(0,7)===state.month))ds[e]=(ds[e]||0)+1});
-    state.days=state.days.filter(function(d){return ds[d]});
-    $("days").innerHTML=Object.keys(ds).sort().reverse().map(function(d){
-      return '<button class="chip" type="button" data-day="'+d+'" aria-pressed="'+(state.days.indexOf(d)>-1)+'">'+(+d.slice(8,10))+' '+MON[+d.slice(5,7)-1]+' ('+ds[d]+')</button>'}).join("");
-    $("dayClr").hidden=!state.days.length;
+    var byStatus=state.st!=="all"||state.age!=="all"||dateOn();
+    var act=document.activeElement, setSel=function(id,opts,val){var e=$(id);if(act===e)return;e.innerHTML=opts.map(function(o){return '<option value="'+esc(o[0])+'">'+esc(o[1])+'</option>'}).join("");e.value=val};
+    setSel("fAge",AGES.map(function(a){var n=a[0]==="all"?"":" ("+state.cases.filter(function(c){var k=state.age;state.age=a[0];var ok=inPlat(c)&&ageOk(c);state.age=k;return ok}).length+")";return [a[0],a[1]+n]}),state.age);
+    var ys={},mo={};state.cases.forEach(function(c){var e=evDate(c);if(!inPlat(c)||!e)return;ys[e.slice(0,4)]=(ys[e.slice(0,4)]||0)+1;if(state.year==="all"||e.slice(0,4)===state.year)mo[e.slice(5,7)]=(mo[e.slice(5,7)]||0)+1});
+    if(state.year!=="all"&&!ys[state.year])ys[state.year]=0; if(state.mon!=="all"&&!mo[state.mon])mo[state.mon]=0;
+    setSel("fYear",[["all","รวมทุกปี"]].concat(Object.keys(ys).sort().reverse().map(function(y){return [y,(+y+543)+" ("+ys[y]+")"]})),state.year);
+    setSel("fMon",[["all","ทุกเดือน"]].concat(Object.keys(mo).sort().map(function(m){return [m,MON[+m-1]+" ("+mo[m]+")"]})),state.mon);
+    if(act!==$("fFrom"))$("fFrom").value=state.from; if(act!==$("fTo"))$("fTo").value=state.to;
     var nf=nFilters();$("fcount").hidden=!nf;$("fcount").textContent="ใช้อยู่ "+nf;
     var lab=[];
     if(state.age!=="all")lab.push(["age",AGES.filter(function(a){return a[0]===state.age})[0][1]]);
-    if(state.days.length)lab.push(["day",state.days.length===1?"วันที่ "+dmy(state.days[0]):"เลือก "+state.days.length+" วัน"]);else if(state.month!=="all")lab.push(["month",MON[+state.month.slice(5,7)-1]+" "+(+state.month.slice(0,4)+543)]);
+    if(dateOn())lab.push(["when",whenTxt()]);
     if(state.st!=="all")lab.push(["st",state.st==="c:ready"?"พร้อมจบงาน":state.st==="w:sr"?"ได้ของแล้ว รอทำ SR":state.st==="w:noloc"?"ได้ของแล้ว ยังไม่ระบุคลัง":state.st==="x:note"?"มีโน้ตปัญหา":state.st==="u:any"?"ด่วน: ขอคืนเงิน":state.st==="a:any"?"เตือนทั้งหมด":state.st.indexOf("s:")===0?({ok:"SR ตรงครบ",diff:"SR ไม่ตรงกับแพลตฟอร์ม",eye:"มี SR ต้องดูด้วยตา",none:"ยังไม่มี SR"})[state.st.slice(2)]:state.st.indexOf("n:")===0?"แจ้งในแพลตฟอร์ม":state.st.indexOf("r:")===0?"ผลตรวจ":state.st.slice(2)]);
     $("act").innerHTML=lab.map(function(l){return '<button type="button" data-clear="'+l[0]+'">'+esc(l[1])+' ✕</button>'}).join("");
     var searching=!!state.q.trim();
@@ -618,12 +624,12 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     var el=$("list");
     if(!state.loaded){return}
     if(!show.length){
-      el.innerHTML='<div class="empty">'+(state.q&&O.length?'<b>เลขนี้ไม่มีในไฟล์แพลตฟอร์ม แต่มีใน SR</b>ดูรายการด้านล่าง "SR รับของเข้าแล้ว แต่ไม่มีคำสั่งซื้อในหน้านี้"':state.q?'<b>ไม่เจอเลขนี้ในรายการทั้งหมด '+state.cases.length+' ใบ</b>ตรวจตัวเลขอีกครั้ง ถ้าถูกต้องแล้ว แปลว่าคำสั่งซื้อนี้ยังไม่อยู่ในไฟล์ที่นำเข้า ให้แจ้งแอดมิน':byStatus?'<b>ไม่มีรายการตามตัวกรองนี้</b>กดปุ่ม ✕ ด้านบนเพื่อเอาตัวกรองออก':state.tab==="prob"?'<b>ไม่มีใบที่ติดปัญหา</b>ใบที่ได้ของไม่ครบ ไม่ได้ของ หรือมีรายการเสียหาย จะมาอยู่ที่นี่':arch?'<b>ยังไม่มีใบที่จบงาน</b>แอดมินกด "จบงาน" ในแท็บ รอจบงาน แล้วใบจะมาเก็บที่นี่ตามเดือนที่เกิดเรื่อง':state.tab==="pin"?'<b>ยังไม่ได้ปักหมุด</b>กดปุ่ม "ปักหมุด" บนการ์ดที่อยากเก็บไว้ดู':(state.plat!=="all"&&!work.length)?'<b>ยังไม่มีรายการของ '+esc(state.plat)+'</b>รอแอดมินเพิ่มไฟล์ของแพลตฟอร์มนี้':(state.tab==="todo"?(work.length?'<b>ตรวจครบแล้ว</b>ไม่มีกล่องค้างตรวจ':'<b>ยังไม่มีรายการ</b>รอแอดมินเพิ่มรายการพัสดุ'):'<b>ยังไม่ได้ตรวจกล่องไหน</b>กดแท็บ "ยังไม่ตรวจ" เพื่อเริ่ม'))+'</div>';
+      el.innerHTML='<div class="empty">'+(state.q&&O.length?'<b>เลขนี้ไม่มีในไฟล์แพลตฟอร์ม แต่มีใน SR</b>ดูรายการด้านล่าง "SR รับของเข้าแล้ว แต่ไม่มีคำสั่งซื้อในหน้านี้"':state.q?'<b>ไม่เจอเลขนี้ในรายการทั้งหมด '+state.cases.length+' ใบ</b>ตรวจตัวเลขอีกครั้ง ถ้าถูกต้องแล้ว แปลว่าคำสั่งซื้อนี้ยังไม่อยู่ในไฟล์ที่นำเข้า ให้แจ้งแอดมิน':byStatus?'<b>ไม่มีรายการตามตัวกรองนี้</b>กดปุ่ม ✕ ด้านบนเพื่อเอาตัวกรองออก':state.tab==="prob"?'<b>ไม่มีใบที่ติดปัญหา</b>ใบที่ได้ของไม่ครบ ไม่ได้ของ หรือมีรายการเสียหาย จะมาอยู่ที่นี่':arch?'<b>ยังไม่มีใบที่จบงาน</b>แอดมินกด "จบงาน" ในแท็บ รอจบงาน แล้วใบจะมาเก็บที่นี่ตามเดือนที่เกิดเรื่อง':state.tab==="pin"?'<b>ยังไม่ได้ปักหมุด</b>กดปุ่ม "ปักหมุด" บนการ์ดที่อยากเก็บไว้ดู':(state.plats.length&&!work.length)?'<b>ยังไม่มีรายการของ '+esc(state.plats.join(" + "))+'</b>รอแอดมินเพิ่มไฟล์ของแพลตฟอร์มนี้':(state.tab==="todo"?(work.length?'<b>ตรวจครบแล้ว</b>ไม่มีกล่องค้างตรวจ':'<b>ยังไม่มีรายการ</b>รอแอดมินเพิ่มรายการพัสดุ'):'<b>ยังไม่ได้ตรวจกล่องไหน</b>กดแท็บ "ยังไม่ตรวจ" เพื่อเริ่ม'))+'</div>';
     } else if(arch&&!searching){
       var mg={},mh="";show.forEach(function(c){var k=(evDate(c)||"").slice(0,7)||"-";(mg[k]=mg[k]||[]).push(c)});
       Object.keys(mg).sort().reverse().forEach(function(k){mh+='<h2 class="grp">'+(k==="-"?"ไม่มีวันที่":"เกิดเรื่อง "+MON[+k.slice(5,7)-1]+" "+(+k.slice(0,4)+543))+'<span>จบแล้ว '+mg[k].length+' ใบ</span></h2>'+mg[k].map(cardHTML).join("")});
       el.innerHTML=mh;
-    } else if(state.plat==="all"){
+    } else if(state.plats.length!==1){
       var order=names.slice(), html="";
       order.forEach(function(n){var g=show.filter(function(c){return c.platform===n});if(!g.length)return;var tt=state.cases.filter(function(c){return c.platform===n}).length;html+='<h2 class="grp">'+esc(n)+'<span>แสดง '+g.length+' จากทั้งหมด '+tt+' ใบ</span></h2>'+g.map(cardHTML).join("")});
       var rest=show.filter(function(c){return order.indexOf(c.platform)<0});if(rest.length)html+='<h2 class="grp">อื่นๆ<span>'+rest.length+' ใบ</span></h2>'+rest.map(cardHTML).join("");
@@ -707,13 +713,14 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     state.nopen[id]=false; if(!Object.keys(pt).length){say("ไม่มีอะไรเปลี่ยน");render();return}
     write(id,pt,"บันทึกแล้ว");
   });
-  $("plats").addEventListener("click",function(e){var b=e.target.closest("button[data-plat]");if(!b)return;state.plat=b.dataset.plat;state.touched={};render()});
-  function clearF(k){if(k==="q"){state.q="";$("q").value="";render();return}if(k==="plat"||k==="all")state.plat="all";if(k==="age"||k==="all")state.age="all";if(k==="day"||k==="all")state.days=[];if(k==="month"||k==="all")state.month="all";if(k==="st"||k==="all"){state.st="all";$("st").value="all"}state.touched={};render()}
-  function go(t){state.tab=t;state.st="all";state.age="all";state.month="all";state.days=[];$("st").value="all";state.touched={};render()}
-  $("ages").addEventListener("click",function(e){var b=e.target.closest("button[data-age]");if(!b)return;state.age=b.dataset.age;state.touched={};render()});
-  $("months").addEventListener("click",function(e){var b=e.target.closest("button[data-month]");if(!b)return;state.month=b.dataset.month;state.touched={};render()});
-  $("days").addEventListener("click",function(e){var b=e.target.closest("button[data-day]");if(!b)return;var d=b.dataset.day,i=state.days.indexOf(d);if(i>-1)state.days.splice(i,1);else state.days.push(d);state.touched={};render()});
-  $("dayClr").addEventListener("click",function(){state.days=[];state.touched={};render()});
+  $("plats").addEventListener("click",function(e){var b=e.target.closest("button[data-plat]");if(!b)return;var v=b.dataset.plat,i=state.plats.indexOf(v);
+    if(v==="all")state.plats=[];else{if(i>-1)state.plats.splice(i,1);else state.plats.push(v);if(state.plats.length>=document.querySelectorAll("#plats button").length-1)state.plats=[]}
+    state.touched={};render()});
+  function clearF(k){if(k==="q"){state.q="";$("q").value="";render();return}if(k==="plat"||k==="all")state.plats=[];if(k==="age"||k==="all")state.age="all";if(k==="when"||k==="all"){state.year="all";state.mon="all";state.from="";state.to=""}if(k==="st"||k==="all"){state.st="all";$("st").value="all"}state.touched={};render()}
+  function go(t){state.tab=t;state.st="all";state.age="all";state.year="all";state.mon="all";state.from="";state.to="";$("st").value="all";state.touched={};render()}
+  [["fAge","age"],["fYear","year"],["fMon","mon"],["fFrom","from"],["fTo","to"]].forEach(function(p){$(p[0]).addEventListener("change",function(e){state[p[1]]=e.target.value||(p[1]==="from"||p[1]==="to"?"":"all");
+    if(p[1]==="year")state.mon=state.mon; if(state.from&&state.to&&state.from>state.to){var t=state.from;state.from=state.to;state.to=t}
+    state.touched={};if(e.target.blur)e.target.blur();render()})});
   $("clrAll").addEventListener("click",function(){clearF("all")});
   $("act").addEventListener("click",function(e){var b=e.target.closest("button[data-clear]");if(b)clearF(b.dataset.clear)});
   $("tabTodo").addEventListener("click",function(){go("todo")});
