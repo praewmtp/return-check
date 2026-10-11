@@ -39,6 +39,7 @@ class Fake:
 
 
 fake = Fake(); app._con = fake; app.time.sleep = lambda x: None
+real_verify_sr = app.verify_sr
 app.verify_sr = lambda cards, staff, docs: ({}, {})
 
 
@@ -134,6 +135,27 @@ c, j = call('POST', 'act', {'id': 'a6', 'patch': {'closed': 'loss', 'closed_why'
 call('POST', 'act', {'id': 'a2', 'patch': {'check': 'ok', 'loc': 'E1', 'loc_items': ['E1'], 'item_issue': [{'k': 'short', 'n': 'ได้ 1'}]}}, token=T)
 c, j = call('POST', 'act', {'id': 'a2', 'patch': {'closed': 'goods'}}, token=A); ok('item problem alone also blocks closing', c == 400 and j['error'] == 'need_prob')
 
+# ---- hand-made cards (internal credit note, warehouse transfer)
+NEW = {'cat': 'ภายใน', 'ref': ' cn 6910-001 ', 'cust': 'C0042', 'date': '2026-10-10', 'items': [{'name': 'ด้าย A1307', 'qty': 12}, {'name': '', 'qty': 3}, {'name': 'ซิป', 'qty': 'abc'}, {'name': 'เข็ม', 'qty': '2'}]}
+c, j = call('POST', 'create', NEW, token=T); ok('staff cannot create cards', c == 403)
+c, j = call('POST', 'create', dict(NEW, cat='Amazon'), token=A); ok('unknown category refused', c == 400)
+c, j = call('POST', 'create', dict(NEW, ref='  '), token=A); ok('missing document number refused', c == 400)
+c, j = call('POST', 'create', dict(NEW, items=[{'name': 'x', 'qty': 0}]), token=A); ok('card without a valid item refused', c == 400 and j['error'] == 'no_items')
+c, j = call('POST', 'create', NEW, token=A); ok('internal return created', c == 200); MID = j['id']
+d = fake.cases[MID]['data']
+ok('created card: category, type, customer, date, only valid items kept, maker recorded', d['platform'] == 'ภายใน' and d['typ'] == 'ภายใน - ลดหนี้คืนของ' and d['order'] == 'cn 6910-001' and d['cust'] == 'C0042' and d['cancel_date'] == '2026-10-10'
+   and [(i['name'], i['qty']) for i in d['items']] == [('ด้าย A1307', 12), ('เข็ม', 2)] and d['manual'] is True and d['made_by'] == 'LOVE')
+c, j = call('POST', 'create', dict(NEW, ref='CN 6910-001'), token=A); ok('same category + same number is not created twice', c == 409 and j['error'] == 'dup')
+c, j = call('POST', 'create', dict(NEW, cat='ย้ายคลัง'), token=A); ok('same number in another category is allowed', c == 200); MID2 = j['id']
+c, j = call('GET', 'state', token=T); ok('staff see the new cards', len(j['cases']) == 8 and any(x['id'] == MID and x['rank'] == 2 for x in j['cases']))
+c, j = call('POST', 'act', {'id': MID2, 'patch': {'closed': 'none'}}, token=A); ok('hand-made card cannot be cancelled without a reason', c == 400)
+c, j = call('POST', 'act', {'id': MID2, 'patch': {'closed': 'none', 'closed_why': 'สร้างผิด'}}, token=A); ok('hand-made card entered by mistake is cancelled with a reason (kept, not deleted)', c == 200 and MID2 in fake.cases)
+c, j = call('POST', 'act', {'id': 'a2', 'patch': {'closed': 'none', 'closed_why': 'สร้างผิด'}}, token=A); ok('...but a platform card cannot skip the rules this way', c == 400)
+app.verify_sr = real_verify_sr
+out = app.run_import([], {k: v['data'] for k, v in fake.cases.items()}, {k: v['staff'] for k, v in fake.cases.items()}, {})
+ok('weekly import keeps hand-made cards untouched and raises no warning about them', out[0][MID] == fake.cases[MID]['data'] and not [w for w in out[4].get('warnings', []) if MID in w])
+app.verify_sr = lambda cards, staff, docs: ({}, {})
+
 # ---- PINs
 c, j = call('POST', 'pins', {'admin_pin': 'admin-7733', 'new_staff': '5555'}, token=T); ok('staff cannot change PINs', c == 403)
 c, j = call('POST', 'pins', {'admin_pin': 'wrong', 'new_staff': '5555'}, token=A); ok('change PIN needs the current admin PIN', c == 401)
@@ -141,7 +163,7 @@ c, j = call('POST', 'pins', {'admin_pin': 'admin-7733', 'new_staff': 'admin-7733
 c, j = call('POST', 'pins', {'admin_pin': 'admin-7733', 'new_staff': '5555'}, token=A); ok('staff PIN changed', c == 200); A2 = j['token']
 c, j = call('POST', 'login', {'pin': '4821', 'name': 'นิด'}); ok('old staff PIN no longer works', c == 401)
 c, j = call('GET', 'state', token=T); ok('phones on the old PIN are signed out', c == 401)
-c, j = call('GET', 'state', token=A2); ok('admin stays signed in, all cards intact', c == 200 and len(j['cases']) == 6)
+c, j = call('GET', 'state', token=A2); ok('admin stays signed in, all cards intact', c == 200 and len(j['cases']) == 8)
 
 print('\n%d passed, %d failed' % (N['pass'], N['fail']))
 sys.exit(1 if N['fail'] else 0)

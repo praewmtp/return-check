@@ -44,7 +44,7 @@ h1{font-size:24px;font-weight:700;margin:0;line-height:1.25}
 #tabProb[data-n]:not([data-n="0"]){border-color:var(--no);color:var(--no)} #tabProb[aria-pressed="true"]{background:var(--no);border-color:var(--no);color:var(--card)}
 .tab{font:inherit;font-weight:600;font-size:15px;padding:4px 6px;line-height:1.25;min-height:48px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
 .tab[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:var(--card)}
-.plats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.plats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .plat{font:inherit;font-weight:700;font-size:15px;min-height:56px;padding:4px 2px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;display:grid;gap:0;line-height:1.2;min-width:0}
 .plat .pn{font-size:17px;font-weight:700;display:block}
 .plat small{font-weight:500;font-size:12.5px;color:var(--muted)}
@@ -125,6 +125,7 @@ h1{font-size:24px;font-weight:700;margin:0;line-height:1.25}
 .imp{display:grid;gap:12px;padding:4px 0 8px}
 .imp input[type=file]{font:inherit;font-size:15px;width:100%;padding:12px;border-radius:10px;border:2px dashed var(--line);background:var(--card);color:var(--ink)}
 .imp .pin{font:inherit;font-size:18px;min-height:50px;padding:8px 12px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);width:100%}
+.mkrow{display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:8px;margin-bottom:8px} .imp .go.alt{background:var(--card);color:var(--brand);border:2px dashed var(--brand)} .pok{color:var(--ok);font-weight:700}
 .imp .go{font:inherit;font-size:17px;font-weight:700;min-height:52px;border-radius:12px;border:0;background:var(--brand);color:var(--card);cursor:pointer}
 .imp .go.ok{background:var(--ok);} .imp .go[disabled]{opacity:.45;cursor:default}
 .prow{background:var(--card);border:1px solid var(--line);border-left:6px solid var(--ok);border-radius:10px;padding:10px 12px;font-size:14.5px;display:grid;gap:2px}
@@ -279,6 +280,17 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     <summary id="orphSum">SR ที่ไม่มีคำสั่งซื้อในหน้านี้</summary>
     <div class="list" id="orphList"></div>
   </details>
+  <details class="admin" id="mkBox" hidden><summary>＋ สร้างใบรับคืนเอง (ภายใน / ย้ายคลัง / อื่นๆ)</summary>
+    <form class="imp" id="mkForm" autocomplete="off">
+      <label class="lbl" for="mkCat">หมวด</label><select class="pin" id="mkCat"><option>ภายใน</option><option>ย้ายคลัง</option><option>Shopee</option><option>TikTok</option><option>Lazada</option></select>
+      <label class="lbl" for="mkRef" id="mkRefL">เลขใบลดหนี้ / เลขเอกสาร</label><input class="pin" id="mkRef" type="text" maxlength="60" required>
+      <label class="lbl" for="mkCust" id="mkCustL">รหัสลูกค้า</label><input class="pin" id="mkCust" type="text" maxlength="80">
+      <label class="lbl" for="mkDate">วันที่เกิดเรื่อง</label><input class="pin" id="mkDate" type="date">
+      <span class="lbl">รายการสินค้า และจำนวน</span><div id="mkItems"></div>
+      <button class="go alt" type="button" id="mkAdd">＋ เพิ่มรายการ</button>
+      <button class="go" type="submit">สร้างใบ</button><div class="lbl" id="mkOut" role="status"></div>
+    </form>
+  </details>
   <details class="admin" id="pinBox" hidden><summary>เปลี่ยนรหัส PIN</summary>
         <form class="imp" id="pinForm" autocomplete="off">
           <label class="lbl" for="pcOld">PIN แอดมินตอนนี้ (รหัสเก่า)</label><input class="pin" id="pcOld" type="password" autocomplete="current-password" required>
@@ -310,7 +322,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
 <script>
 (function(){
   var RES={ok:["ได้ของครบ","✓","ok"],part:["ได้ของไม่ครบ","!","part"],none:["ไม่ได้ของ","✕","no"]};
-  var PLATS=["Shopee","TikTok","Lazada"];
+  var PLATS=["Shopee","TikTok","Lazada","ภายใน","ย้ายคลัง"];
   var PIN_SVG='<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.2 1.2l4.6 4.6-1.3 1.3-.9-.3-2.5 2.5.3 3-1.3 1.3-2.9-2.9L2.4 14.5 1.5 13.6l3.8-3.8L2.4 6.9l1.3-1.3 3 .3 2.5-2.5-.3-.9z"/></svg>';
   function pinBtn(c){return state.canWrite?'<button class="pin" type="button" data-act="pin" aria-pressed="'+(!!c.pinned)+'">'+PIN_SVG+(c.pinned?"ปักอยู่":"ปักหมุด")+"</button>":""}
   var AGES=[["all","ทุกช่วง"],["0-4","0–4 วัน"],["5-7","5–7 วัน (เตือน)"],["8+","เกิน 7 วัน"],["15+","เกิน 14 วัน"]];
@@ -318,7 +330,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
   var TYPES=["ขอคืนสินค้า - รอลูกค้าส่งของกลับ","ขอคืนสินค้า - ของกำลังส่งกลับ","ขอคืนสินค้า - ของถึงร้านแล้ว","คืนเงินอย่างเดียว - ไม่มีของกลับ","ตีกลับ - ของกำลังกลับ","ตีกลับ - ของถึงร้านแล้ว","ตีกลับ - ยังไม่ทราบว่าถึงร้าน","ส่งแล้วยกเลิก - ไม่มีพัสดุตีกลับ"];
   var OLD={"ขอคืนสินค้า - ขนส่งแจ้งส่งคืนถึงร้านแล้ว":2,"ขอคืนสินค้า - คืนเงินแล้ว มีพัสดุส่งคืน":2,"คืนเงินอย่างเดียว - ลูกค้าไม่ส่งของคืน":3,"ส่งแล้วโดนยกเลิก - ของกำลังตีกลับ":4,"ส่งแล้วโดนยกเลิก - ขนส่งแจ้งคืนถึงร้านแล้ว":5,"ส่งแล้วโดนยกเลิก - ไม่อยู่ในรายการตีกลับ":7};
   function canon(t){t=String(t||"");if(TYPES.indexOf(t)>-1)return t;if(t in OLD)return TYPES[OLD[t]];if(t.indexOf("ส่งแล้วโดนยกเลิก")===0)return TYPES[6];return t}
-  var state={tab:"todo",plat:"all",st:"all",age:"all",month:"all",days:[],q:"",cases:[],canWrite:true,touched:{},busy:{},open:{},nopen:{},pend:null,cl:null,cc:null,admin:true,canImport:false,loaded:false,meta:null};
+  var state={tab:"todo",plat:"all",st:"all",age:"all",month:"all",days:[],q:"",cases:[],canWrite:true,touched:{},busy:{},open:{},nopen:{},pend:null,cl:null,cc:null,draft:{},admin:true,canImport:false,loaded:false,meta:null};
   var uid=null, TOKEN=null, ME=null;
   try{TOKEN=localStorage.getItem("rc_token")}catch(_){}
   function api(a,body){var o={method:body?"POST":"GET",headers:{}};if(TOKEN)o.headers.Authorization="Bearer "+TOKEN;
@@ -365,6 +377,8 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     if(isClosed(c)){var rp=state.cl&&state.cl.id===c.id&&state.cl.k==="reopen";
       return '<div class="cbox closed"><b>จบงานแล้ว: '+esc(OUT[c.closed]||c.closed)+'</b><span class="sub">'+esc(stamp("จบเมื่อ",c.closed_at,c.closed_by))+'</span>'+(c.closed_why?'<span>เหตุผล: '+esc(c.closed_why)+'</span>':'')+
         (state.admin&&state.canWrite?(rp?'<div class="nbtns"><button class="nbtn pri" type="button" data-act="c-reopen-yes">ใช่ เปิดงานใหม่</button><button class="nbtn" type="button" data-act="c-cancel">ยกเลิก</button></div>':'<button class="nopen" type="button" data-act="c-reopen">เปิดงานใหม่ (ถ้าจบผิด)</button>'):'')+'</div>'}
+    if(c.manual&&stage(c)===1&&state.admin&&state.canWrite){var mk=state.cl&&state.cl.id===c.id&&state.cl.k==="mkdel";
+      return mk?'<div class="cbox"><b>ยกเลิกใบที่สร้างเองนี้ ใช่ไหม</b><span class="sub">ใบจะไปเก็บในแท็บ จบแล้ว พร้อมเหตุผล “สร้างผิด” (ไม่ถูกลบ)</span><div class="nbtns"><button class="nbtn pri" type="button" data-act="c-mkdel-yes">ใช่ ยกเลิกใบนี้</button><button class="nbtn" type="button" data-act="c-cancel">ไม่ยกเลิก</button></div></div>':'<button class="nopen" type="button" data-act="c-mkdel">สร้างผิด? ยกเลิกใบนี้</button>'}
     if(stage(c)===1.5)return probHTML(c);
     if(stage(c)!==2)return"";
     var back=cameBack(c)?'<span><b>แพลตฟอร์มเปลี่ยนสถานะหลังจบงาน</b> เดิมจบไว้ตอนเป็น "'+esc(canon(c.closed_typ))+'" ให้ตรวจแล้วจบงานใหม่</span>':'';
@@ -374,7 +388,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     var h='<div class="cbox'+(back?' back':'')+'">'+back+'<b>จบงาน (แอดมิน)</b>'+list;
     if(noSR)return h+'<span class="sub">ได้ของคืนแล้ว ต้องมี SR ก่อนจึงจบงานได้ ให้บัญชีทำ SR แล้วนำเข้าไฟล์ SR ระบบจะตรวจให้ว่าตรงไหม แล้วข้อนี้จะเป็น ✓ เอง</span>'+(state.canImport?'<button class="nbtn" type="button" data-act="c-imp">นำเข้าไฟล์ SR เพื่อตรวจ</button>':'')+'</div>';
     if(!st)return h+'<button class="nbtn" type="button" data-act="c-open">'+(miss.length?'จบงานทั้งที่ยังไม่ครบ (ต้องเขียนเหตุผล)':'จบงาน')+'</button></div>';
-    if(!st.k||st.k==="reopen"||st.k==="prob")return h+'<span>ผลสุดท้ายของใบนี้คืออะไร</span><div class="nbtns">'+Object.keys(OUT).map(function(k){return '<button class="nbtn" type="button" data-act="c-pick-'+k+'">'+OUT[k]+'</button>'}).join("")+'<button class="nopen" type="button" data-act="c-cancel">ปิด</button></div></div>';
+    if(!st.k||st.k==="reopen"||st.k==="prob"||st.k==="mkdel")return h+'<span>ผลสุดท้ายของใบนี้คืออะไร</span><div class="nbtns">'+Object.keys(OUT).map(function(k){return '<button class="nbtn" type="button" data-act="c-pick-'+k+'">'+OUT[k]+'</button>'}).join("")+'<button class="nopen" type="button" data-act="c-cancel">ปิด</button></div></div>';
     return h+'<label for="cw-'+esc(c.id)+'">'+(miss.length?'เหตุผลที่จบทั้งที่ยังไม่ครบ (ต้องเขียน)':'หมายเหตุ (ไม่เขียนก็ได้)')+'</label><input id="cw-'+esc(c.id)+'" type="text" maxlength="200" placeholder="'+(miss.length?'เช่น แพ้ข้อพิพาท ตัดเป็นขาดทุน':'')+'">'+
       '<b>ยืนยันจบงาน: "'+OUT[st.k]+'" ใช่ไหม</b><div class="nbtns"><button class="nbtn pri" type="button" data-act="c-yes">ใช่ จบงาน</button><button class="nbtn" type="button" data-act="c-cancel">ยกเลิก</button></div></div>'}
   function lvl(c){if(isClosed(c))return 0;if(c.rank===4||c.check==="ok"||c.sr)return 0;var d=daysOpen(c);if(d===null)return 0;return d>LIMIT?3:(d>WARN?2:1)}
@@ -425,8 +439,9 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       '<div class="card-h"><span class="urg">'+esc(c.urg)+'</span><span>'+esc(c.typ)+'</span><span class="pf">'+esc(c.platform||"")+'</span>'+pinBtn(c)+'</div><div class="card-b">'+top+urgHTML(c)+daysHTML(c)+
       '<div><span class="lbl">เลขพัสดุบนกล่อง</span><div class="big">'+(boxNo(c)?hl(boxNo(c)):'<span style="font-family:var(--f);font-size:18px;color:var(--muted)">ยังไม่มีเลขพัสดุ</span>')+'</div></div>'+
       itemsHTML(c,total)+
-      '<div class="ids"><div><span class="lbl">รหัสคำสั่งซื้อ</span><div class="mid">'+hl(c.order)+'</div></div>'+
-      (isFd&&c.cancel_date?'<div><span class="lbl">วันที่ยกเลิก</span><div class="dt">'+esc(dmy(c.cancel_date))+'</div></div>':'')+
+      '<div class="ids"><div><span class="lbl">'+(c.manual?'เลขเอกสาร':'รหัสคำสั่งซื้อ')+'</span><div class="mid">'+hl(c.order)+'</div></div>'+
+      (c.cust?'<div><span class="lbl">'+(c.platform==="ย้ายคลัง"?'จากคลัง → ไปคลัง':'รหัสลูกค้า')+'</span><div class="mid">'+esc(c.cust)+'</div></div>':'')+
+      (isFd&&c.cancel_date?'<div><span class="lbl">'+(c.manual?'วันที่เกิดเรื่อง':'วันที่ยกเลิก')+'</span><div class="dt">'+esc(dmy(c.cancel_date))+'</div></div>':'')+
       (isFd?'':'<div><span class="lbl">รหัสขอคืน</span><div class="mid">'+hl(c.req)+'</div></div>'+
         '<div class="wide"><span class="lbl">วันที่ขอคืน</span><div class="dt">'+esc(dmy(c.req_date)||"-")+(isPaid(c)?' <span class="lbl" style="display:inline">· คืนเงินแล้ว '+esc(dmy(c.refund_date))+'</span>':' <span class="lbl" style="display:inline">· ยังไม่คืนเงิน</span>')+'</div></div>')+'</div>'+
       srHTML(c)+
@@ -442,7 +457,9 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
 
     } else {
       var dis=(state.canWrite&&!state.busy[c.id])?'':' disabled';
-      h+='<div class="ask"><b class="stp">2. กดผลตรวจ</b> เปิดกล่องดูแล้วของครบไหม</div><div class="btns">'+
+      var np=(c.photos||[]).length;
+      h+=(c.photos?'<div class="ask"><b class="stp">2. ถ่ายรูปของ + ใบเอกสาร</b> '+(np?'<span class="pok">มีแล้ว '+np+' รูป ✓</span>':'ต้องมีอย่างน้อย 1 รูป')+'</div><label class="pbtn">＋ ถ่ายรูป / เลือกรูป<input type="file" accept="image/*" multiple data-pfile="'+esc(c.id)+'"></label>':'')+
+        '<div class="ask"><b class="stp">'+(c.photos?3:2)+'. กดผลตรวจ</b> เปิดกล่องดูแล้วของครบไหม</div><div class="btns">'+
         '<button class="btn b-ok" type="button" data-act="ok"'+dis+'><span class="ic" aria-hidden="true">✓</span>ได้ของครบ</button>'+
         '<button class="btn b-part" type="button" data-act="part"'+dis+'><span class="ic" aria-hidden="true">!</span>ได้ของไม่ครบ</button>'+
         '<button class="btn b-no" type="button" data-act="none"'+dis+'><span class="ic" aria-hidden="true">✕</span>ไม่ได้ของ</button></div>';
@@ -474,7 +491,8 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
   function locs(){var m={};state.cases.forEach(function(c){(c.loc_items&&c.loc_items.length?c.loc_items:[c.loc]).forEach(function(l){l=String(l||"").trim();if(l&&l!==MISS&&l.indexOf(" → ")<0)m[l]=(m[l]||0)+1})});return Object.keys(m).sort(function(x,y){return m[y]-m[x]}).slice(0,6)}
   var MISS="ไม่ได้ของ";
   function itemsHTML(c,total){var edit=state.canWrite&&c.rank<4,id=esc(c.id);
-    var rows=c.items.map(function(it,i){var v=itemLoc(c,i),miss=v===MISS,is=itemIss(c,i);
+    var dr=state.draft[c.id];
+    var rows=c.items.map(function(it,i){var v=dr?dr.loc[i]||"":itemLoc(c,i),miss=v===MISS,is=dr?(dr.iss[i]||null):itemIss(c,i);
       return '<li'+(miss?' class="miss"':'')+'><div><div class="v">'+esc(it.var&&it.var!=="-"?it.var:it.name)+'</div><div class="n">'+esc(it.var&&it.var!=="-"?it.name:"")+'</div></div><div class="q">×'+esc(it.qty)+'</div>'+
         (edit?'<div class="lr"><input id="l-'+id+'-'+i+'" data-loc="'+i+'" type="text" maxlength="80" value="'+esc(v)+'" placeholder="เก็บเข้าคลังไหน" aria-label="คลังที่เก็บ รายการที่ '+(i+1)+'"><button type="button" class="im" data-act="im" aria-pressed="'+miss+'">'+(miss?'ยกเลิก':'ไม่ได้ของ')+'</button><button type="button" class="ip" data-act="ip" aria-pressed="'+(!!is)+'">มีปัญหา</button></div>'+
           '<div class="ir"'+(is?'':' hidden')+'><select data-iss="'+i+'" aria-label="ปัญหาของรายการที่ '+(i+1)+'"><option value="">ไม่มีปัญหา</option>'+Object.keys(ISS).map(function(k){return '<option value="'+k+'"'+(is&&is.k===k?' selected':'')+'>'+ISS[k]+'</option>'}).join("")+'</select>'+
@@ -622,6 +640,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       if(!j.ok){say(j.error==="need_sr"?"ต้องมี SR ก่อนจึงจบงานได้":j.error==="need_check"?"คลังต้องตรวจของก่อน":j.error==="need_why"?"ต้องเขียนเหตุผลก่อน":j.error==="need_prob"?"ใบนี้ติดปัญหา ให้แอดมินกด ปัญหาจัดการแล้ว ก่อน":j.error==="closed"?"ใบนี้จบงานแล้ว แก้ไม่ได้ ให้แอดมินเปิดงานใหม่ก่อน":j.error==="admin_only"?"เฉพาะแอดมินจบงานได้":"บันทึกไม่สำเร็จ ลองกดอีกครั้ง");return}
       var c=find(id);
       if(c){Object.keys(j.staff).forEach(function(k){c[k]=j.staff[k]})}
+      if("loc_items" in patch||"item_issue" in patch||patch.check===""){delete state.draft[id];state.nostash=id}
       say(okMsg);
     }).catch(function(){say("บันทึกไม่สำเร็จ ตรวจอินเทอร์เน็ตแล้วลองอีกครั้ง")}).then(function(){delete state.busy[id];render()});
   }
@@ -632,6 +651,8 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       if(act==="c-imp"){var ib=document.getElementById("impBox");if(ib){ib.open=true;if(ib.scrollIntoView)ib.scrollIntoView({block:"start"})}return}
       if(act==="c-open"){state.cl={id:id,k:""};render();return}
       if(act==="c-cancel"){state.cl=null;render();return}
+      if(act==="c-mkdel"){state.cl={id:id,k:"mkdel"};render();return}
+      if(act==="c-mkdel-yes"){state.cl=null;write(id,{closed:"none",closed_at:new Date().toISOString(),closed_by:uid||"",closed_why:"สร้างผิด",closed_typ:c.typ},"ยกเลิกใบแล้ว");return}
       if(act==="c-prob"){state.cl={id:id,k:"prob"};render();return}
       if(act==="c-prob-yes"){state.cl=null;write(id,{prob_ok:true,prob_at:new Date().toISOString(),prob_by:uid||""},"ส่งไปรอจบงานแล้ว");return}
       if(act==="c-reopen"){state.cl={id:id,k:"reopen"};render();return}
@@ -665,7 +686,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       var rf=card.querySelector?card.querySelector("form.iform"):null;
       if(rf&&act!=="none"){var ra=readLoc(rf,c),ro=c.items.map(function(_,i){return itemLoc(c,i)}),nM=ra.filter(function(v){return v===MISS}).length,eI=-1;ra.forEach(function(v,i){if(!v&&eI<0)eI=i});
         var ri=readIss(rf,c),nI=ri.filter(function(x){return x}).length,noNote=ri.some(function(x){return x&&!x.n});
-        var stop=noNote?"เขียนโน้ตของรายการที่มีปัญหาก่อน":act==="ok"&&nI?"มีรายการที่เลือก “มีปัญหา” อยู่ ให้กด ได้ของไม่ครบ":act==="ok"&&nM?"มีรายการที่กด “ไม่ได้ของ” อยู่ ให้กด ได้ของไม่ครบ":nM===ra.length&&ra.length?"ทุกรายการกด “ไม่ได้ของ” ให้กดปุ่ม ไม่ได้ของ":eI>-1?(act==="ok"?"ใส่คลังที่เก็บให้ครบทุกรายการก่อน":"รายการที่ได้ของให้ใส่คลัง รายการที่ไม่ได้ให้กด “ไม่ได้ของ”"):"";
+        var stop=c.photos&&!c.photos.length?"ถ่ายรูปของและใบเอกสารก่อน (ข้อ 2)":noNote?"เขียนโน้ตของรายการที่มีปัญหาก่อน":act==="ok"&&nI?"มีรายการที่เลือก “มีปัญหา” อยู่ ให้กด ได้ของไม่ครบ":act==="ok"&&nM?"มีรายการที่กด “ไม่ได้ของ” อยู่ ให้กด ได้ของไม่ครบ":nM===ra.length&&ra.length?"ทุกรายการกด “ไม่ได้ของ” ให้กดปุ่ม ไม่ได้ของ":eI>-1?(act==="ok"?"ใส่คลังที่เก็บให้ครบทุกรายการก่อน":"รายการที่ได้ของให้ใส่คลัง รายการที่ไม่ได้ให้กด “ไม่ได้ของ”"):"";
         if(stop){delete state.touched[id];state.nopen[id]=false;say(stop);if(eI>-1&&act!=="ok"||eI>-1){var fi=rf.querySelectorAll("input[data-loc]")[eI];if(fi&&fi.focus)fi.focus()}return}
         if(ra.join("\u0001")!==ro.join("\u0001")&&ra.some(function(v){return v})){rp.loc_items=ra;rp.loc=locSum(c,ra);rp.loc_at=rp.checked_at;rp.loc_by=uid||""}
         if(issKey(ri)!==issKey(c.items.map(function(_,i){return itemIss(c,i)||""})))rp.item_issue=ri}
@@ -726,7 +747,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       var a=document.activeElement,typing=a&&a.closest&&a.closest('form.note,.iform,.ph,.cbox');
       state.cases=j.cases.map(function(x){x.items=x.items||[];x.typ=canon(x.typ);x.sort=sortKey(x);return x}).sort(function(p,q){return p.sort-q.sort});
       state.loaded=true;gate("");
-      $("who").textContent=ME.name+(ME.role==="admin"?" (แอดมิน)":"");$("impBox").hidden=ME.role!=="admin";$("pinGo").hidden=ME.role!=="admin";$("pinBox").hidden=ME.role!=="admin";
+      $("who").textContent=ME.name+(ME.role==="admin"?" (แอดมิน)":"");$("impBox").hidden=ME.role!=="admin";$("pinGo").hidden=ME.role!=="admin";$("mkBox").hidden=ME.role!=="admin";$("pinBox").hidden=ME.role!=="admin";
       var h=j.imports||[];$("impHist").textContent=h.length?"นำเข้าล่าสุด: "+h.map(function(x){return thDate(x.at)+" โดย "+x.by+" (+"+x["new"]+" ใบ)"}).reverse().slice(0,3).join(" · "):"";
       if(!typing)render();
     }).catch(function(){if(!quiet)gate("wait","เชื่อมต่อไม่ได้ ตรวจอินเทอร์เน็ตแล้วเปิดใหม่")});
@@ -783,6 +804,21 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       $("resOut").textContent="กำลังย้ายข้อมูล…";
       api("restore",o).then(function(j){$("resOut").textContent=j.ok?"ย้ายแล้ว "+j.cards+" ใบ":"ย้ายไม่ได้: "+(j.error||"");if(j.ok)load(true)}).catch(function(){$("resOut").textContent="ส่งไฟล์ไม่ได้"})};
     r.readAsText(f)});
+  function mkRow(){var d=document.createElement("div");d.className="mkrow";d.innerHTML='<input class="pin" type="text" maxlength="200" placeholder="ชื่อสินค้า / รหัส" aria-label="ชื่อสินค้า"><input class="pin" type="number" inputmode="numeric" min="1" step="1" placeholder="จำนวน" aria-label="จำนวน">';$("mkItems").appendChild(d)}
+  function mkLabels(){var v=$("mkCat").value;$("mkRefL").textContent=v==="ภายใน"?"เลขใบลดหนี้":v==="ย้ายคลัง"?"เลขใบย้ายคลัง":"เลขคำสั่งซื้อ / เลขเอกสาร";$("mkCustL").textContent=v==="ย้ายคลัง"?"จากคลัง → ไปคลัง":"รหัสลูกค้า (ถ้ามี)"}
+  mkRow();mkRow();mkLabels();try{$("mkDate").value=new Date().toISOString().slice(0,10)}catch(_){}
+  $("mkCat").addEventListener("change",mkLabels);
+  $("mkAdd").addEventListener("click",mkRow);
+  $("mkForm").addEventListener("submit",function(e){e.preventDefault();var o=$("mkOut"),rows=$("mkItems").querySelectorAll(".mkrow"),items=[],bad=0,i;
+    for(i=0;i<rows.length;i++){var ins=rows[i].querySelectorAll("input"),n=ins[0].value.trim(),q=ins[1].value.trim();if(!n&&!q)continue;if(!n||!(+q>0)){bad++;continue}items.push({name:n,qty:+q})}
+    if(bad){o.textContent="มีรายการที่ใส่ไม่ครบ ต้องมีทั้งชื่อสินค้าและจำนวน";return}
+    if(!items.length){o.textContent="ใส่สินค้าอย่างน้อย 1 รายการ";return}
+    o.textContent="กำลังสร้าง…";
+    api("create",{cat:$("mkCat").value,ref:$("mkRef").value,cust:$("mkCust").value,date:$("mkDate").value,items:items}).then(function(j){
+      if(j._status===401){gate("login");return}
+      if(j.ok){o.textContent="สร้างแล้ว: "+$("mkCat").value+" "+$("mkRef").value.trim()+" ("+items.length+" รายการ) อยู่ในแท็บ ยังไม่ตรวจ";$("mkRef").value="";$("mkCust").value="";$("mkItems").innerHTML="";mkRow();mkRow();load(true);return}
+      o.textContent=j.error==="dup"?"มีใบเลขนี้ในหมวดนี้อยู่แล้ว ไม่สร้างซ้ำ":j.error==="no_items"?"ใส่สินค้าอย่างน้อย 1 รายการ":j.error==="admin_only"?"ต้องเข้าด้วย PIN แอดมิน":"สร้างไม่สำเร็จ ตรวจเลขเอกสารแล้วลองอีกครั้ง";
+    }).catch(function(){o.textContent="เชื่อมต่อไม่ได้"})});
   $("pinGo").addEventListener("click",function(){var d=$("pinBox");d.open=true;if(d.scrollIntoView)d.scrollIntoView({block:"start"});if($("pcOld").focus)$("pcOld").focus()});
   $("pinForm").addEventListener("submit",function(e){e.preventDefault();var o=$("pcOut"),s=$("pcStaff").value,ad=$("pcAdmin").value;
     if(!s&&!ad){o.textContent="ใส่ PIN ใหม่อย่างน้อย 1 ช่อง";return}
@@ -799,7 +835,10 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     var pid=im.dataset.pid; if(PURL[pid]){if(im.getAttribute("src")!==PURL[pid])im.src=PURL[pid];return}
     if(PWAIT[pid])return; PWAIT[pid]=true;
     fetch("/api?a=photo&pid="+pid,{headers:{Authorization:"Bearer "+TOKEN}}).then(function(r){if(!r.ok)throw 0;return r.blob()}).then(function(bl){PURL[pid]=URL.createObjectURL(bl);delete PWAIT[pid];fillPhotos()}).catch(function(){delete PWAIT[pid]})})}
-  var render0=render; render=function(){render0();fillPhotos()};
+  function stash(){Array.prototype.forEach.call(document.querySelectorAll("form.iform"),function(f){var cd=f.closest(".card"),c=cd&&find(cd.dataset.id);if(!c)return;
+    var la=readLoc(f,c),li=readIss(f,c),same=la.join("\u0001")===c.items.map(function(_,i){return itemLoc(c,i)}).join("\u0001")&&issKey(li)===issKey(c.items.map(function(_,i){return itemIss(c,i)||""}));
+    if(same||state.nostash===c.id)delete state.draft[c.id];else state.draft[c.id]={loc:la,iss:li}});state.nostash=null}
+  var render0=render; render=function(){stash();render0();fillPhotos()};
   document.addEventListener("toggle",function(e){var d=e.target;if(!d||!d.dataset||!d.dataset.nbox)return;state.nopen[d.dataset.nbox]=d.open;if(d.open)fillPhotos()},true);
   function shrink(file,side,q){return new Promise(function(res,rej){var u=URL.createObjectURL(file),im=new Image();
     im.onload=function(){var w=im.naturalWidth,h=im.naturalHeight,k=Math.min(1,side/Math.max(w,h)),cv=document.createElement("canvas");cv.width=Math.max(1,Math.round(w*k));cv.height=Math.max(1,Math.round(h*k));
@@ -810,9 +849,10 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     var id=inp.dataset.pfile,c=find(id),files=Array.prototype.slice.call(inp.files||[]);if(!c||!files.length||state.busy.photo)return;
     var nb=document.getElementById("pn-"+id),note=nb?nb.value.trim():"",msg=document.getElementById("pm-"+id),done=0,bad=0,stop="";
     if((c.photos||[]).length+files.length>20){state.pmsg[id]="การ์ดหนึ่งใบเก็บได้ 20 รูป ตอนนี้มี "+(c.photos||[]).length+" รูป เลือกใหม่ให้น้อยลง";render();return}
-    state.busy.photo=true;state.nopen[id]=true;c.photos=c.photos||[];
+    state.busy.photo=true;if(c.check)state.nopen[id]=true;c.photos=c.photos||[];
     function next(i){
-      if(i>=files.length||stop){delete state.busy.photo;state.pmsg[id]=stop||("ส่งรูปแล้ว "+done+" รูป"+(bad?" · ส่งไม่ได้ "+bad+" รูป ให้เลือกรูปนั้นใหม่":""));render();return}
+      if(i>=files.length||stop){delete state.busy.photo;state.pmsg[id]=stop||("ส่งรูปแล้ว "+done+" รูป"+(bad?" · ส่งไม่ได้ "+bad+" รูป ให้เลือกรูปนั้นใหม่":""));say(state.pmsg[id]);render();return}
+      say("กำลังส่งรูป "+(i+1)+" / "+files.length+" … อย่าปิดหน้านี้");
       if(msg)msg.textContent="กำลังส่งรูป "+(i+1)+" / "+files.length+" … อย่าปิดหน้านี้";
       small(files[i]).then(function(b){return api("photo_add",{id:id,b64:b,note:note})}).then(function(j){
         if(j._status===401){stop="ต้องเข้าใช้งานใหม่ แล้วส่งรูปอีกครั้ง";gate("login")}

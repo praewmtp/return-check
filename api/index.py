@@ -589,6 +589,9 @@ def verify_sr(cards, staff, srs):
 
 # ---------------------------------------------------------------- import pipeline (pure: no database here)
 
+MANUAL_CATS = {'ภายใน': 'ภายใน - ลดหนี้คืนของ', 'ย้ายคลัง': 'ย้ายคลัง - รับของเข้า', 'Shopee': 'สร้างเอง - รอของกลับ', 'TikTok': 'สร้างเอง - รอของกลับ', 'Lazada': 'สร้างเอง - รอของกลับ'}
+
+
 def run_import(files, cards, staff, sr_docs):
     """files: [(name, bytes)]. cards/staff: id -> dict (current database). sr_docs: {sr_no: doc}.
     Returns (new_cards, new_sr_docs, sr_by_card, sr_meta, report). Nothing is written here."""
@@ -662,7 +665,7 @@ def run_import(files, cards, staff, sr_docs):
     dups('เลขพัสดุขาไป', lambda c: c.get('out_track'))
     dups('เลขพัสดุขาคืน', lambda c: c.get('ret_track'))
     for cid, c in new_cards.items():
-        if c.get('typ') not in TYPES:
+        if c.get('typ') not in TYPES and not c.get('manual'):
             warn.append('การ์ด %s มีสถานะที่ไม่รู้จัก: %s' % (cid, c.get('typ')))
         if not c.get('order') or not c.get('items'):
             warn.append('การ์ด %s ไม่มีรหัสคำสั่งซื้อหรือรายการสินค้า' % cid)
@@ -889,6 +892,8 @@ class handler(BaseHTTPRequestHandler):
                             return self._send(404, {'error': 'no_card'})
                         d, sf, why = cards[cid], staff.get(cid) or {}, str(p.get('closed_why') or '').strip()[:200]
                         goods = (d.get('rank') or 9) < 4
+                        if d.get('manual') and not sf.get('check') and why:
+                            goods = False  # a hand-made card entered by mistake can be closed straight away, with the reason kept
                         if goods and not sf.get('check'):
                             return self._send(400, {'error': 'need_check'})
                         has_sr = bool((sr.get(cid) or {}).get('sr'))
@@ -950,6 +955,36 @@ class handler(BaseHTTPRequestHandler):
                 return self._send(200, {'ok': True})
             if who['r'] != 'admin':
                 return self._send(403, {'error': 'admin_only'})
+            if a == 'create':  # a return that does not come from a platform file: internal credit note, warehouse transfer, ...
+                cat, ref = str(b.get('cat') or ''), ' '.join(str(b.get('ref') or '').split())[:60]
+                if cat not in MANUAL_CATS or not ref:
+                    return self._send(400, {'error': 'bad_card'})
+                items = []
+                for it in (b.get('items') or [])[:100]:
+                    name = ' '.join(str((it or {}).get('name') or '').split())[:200]
+                    try:
+                        qty = float(str((it or {}).get('qty') or '0').replace(',', ''))
+                    except ValueError:
+                        qty = 0
+                    if name and 0 < qty < 1000000:
+                        items.append({'name': name, 'var': '-', 'qty': int(qty) if qty == int(qty) else qty})
+                if not items:
+                    return self._send(400, {'error': 'no_items'})
+                day = str(b.get('date') or '')[:10]
+                if not re.match(r'^\d{4}-\d{2}-\d{2}$', day):
+                    day = dt.datetime.utcnow().strftime('%Y-%m-%d')
+                cid = 'mn-' + hashlib.sha1((cat + '|' + ref.upper()).encode()).hexdigest()[:16]
+                if con().run('SELECT 1 FROM cases WHERE id=:i', i=cid):
+                    return self._send(409, {'error': 'dup'})  # same category + same document number already exists
+                data = {'platform': cat, 'rank': 2, 'urg': 'สร้างเอง', 'typ': MANUAL_CATS[cat], 'order': ref, 'req': '-', 'manual': True,
+                        'cust': ' '.join(str(b.get('cust') or '').split())[:80], 'reason': ' '.join(str(b.get('reason') or '').split())[:200],
+                        'date': day, 'cancel_date': day, 'status': 'สร้างเองโดย ' + who['n'], 'items': items,
+                        'made_by': who['n'], 'made_at': dt.datetime.utcnow().isoformat() + 'Z'}
+                con().run("INSERT INTO cases(id,data,staff) SELECT x->>'id', x->'data', x->'staff' FROM jsonb_array_elements(CAST(:j AS jsonb)) x "
+                          "ON CONFLICT (id) DO UPDATE SET data=EXCLUDED.data, staff=EXCLUDED.staff, updated_at=now()",
+                          j=json.dumps([{'id': cid, 'data': data, 'staff': {}}], ensure_ascii=False))
+                log(who['n'], 'create', {'id': cid, 'cat': cat, 'ref': ref, 'items': len(items)})
+                return self._send(200, {'ok': True, 'id': cid})
             if a == 'pins':  # change PINs: admin only, and the current admin PIN must be typed again; everyone is signed out afterwards
                 if not hmac.compare_digest(_hash(str(b.get('admin_pin') or ''), auth['salt']), auth['admin']):
                     time.sleep(1.2)
