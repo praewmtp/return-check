@@ -16,7 +16,7 @@ import datetime as dt
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs, unquote
 
-STAFF_KEYS = ('check', 'checked_at', 'checked_by', 'note', 'note_at', 'note_by', 'loc', 'loc_items', 'loc_at', 'loc_by', 'closed', 'closed_at', 'closed_by', 'closed_why', 'closed_typ', 'pinned', 'action', 'action_at', 'action_by', 'sr_confirmed')
+STAFF_KEYS = ('check', 'checked_at', 'checked_by', 'note', 'note_at', 'note_by', 'loc', 'loc_items', 'loc_at', 'loc_by', 'item_issue', 'prob_ok', 'prob_at', 'prob_by', 'closed', 'closed_at', 'closed_by', 'closed_why', 'closed_typ', 'pinned', 'action', 'action_at', 'action_by', 'sr_confirmed')
 TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
 
 # ---------------------------------------------------------------- small helpers
@@ -857,6 +857,13 @@ class handler(BaseHTTPRequestHandler):
                 patch = {}
                 if 'check' in p and p['check'] in ('', 'ok', 'part', 'none'):
                     patch.update(check=p['check'], checked_at=now if p['check'] else '', checked_by=who['n'] if p['check'] else '')
+                    patch.update(prob_ok=False, prob_at='', prob_by='')  # a new result means the problem (if any) must be looked at again
+                if isinstance(p.get('item_issue'), list):  # per item line: '' or {k: short|fix|ncr, n: note}
+                    patch['item_issue'] = [({'k': x['k'], 'n': str(x.get('n') or '').strip()[:200]} if isinstance(x, dict) and x.get('k') in ('short', 'fix', 'ncr') else '') for x in p['item_issue'][:100]]
+                if p.get('prob_ok') is True:  # admin: the dispute / NCR / rework is dealt with, card moves on to "waiting to close"
+                    if who['r'] != 'admin':
+                        return self._send(403, {'error': 'admin_only'})
+                    patch.update(prob_ok=True, prob_at=now, prob_by=who['n'])
                 if 'note' in p:  # a problem note can be written on any card at any time; clearing a check never wipes it
                     tx = str(p['note']).strip()[:500]
                     patch.update(note=tx, note_at=now if tx else '', note_by=who['n'] if tx else '')
@@ -885,6 +892,9 @@ class handler(BaseHTTPRequestHandler):
                         if goods and not sf.get('check'):
                             return self._send(400, {'error': 'need_check'})
                         has_sr = bool((sr.get(cid) or {}).get('sr'))
+                        prob = goods and (sf.get('check') in ('part', 'none') or any(isinstance(x, dict) and x.get('k') for x in (sf.get('item_issue') or [])))
+                        if prob and not sf.get('prob_ok'):
+                            return self._send(400, {'error': 'need_prob'})  # problem cards must be dealt with before the job can end
                         if goods and sf.get('check') in ('ok', 'part') and not has_sr:
                             return self._send(400, {'error': 'need_sr'})  # goods are back: must be booked in before the job can end
                         li = sf.get('loc_items') or []
@@ -898,7 +908,7 @@ class handler(BaseHTTPRequestHandler):
                     patch['sr_confirmed'] = p['sr_confirmed']
                 if not patch:
                     return self._send(400, {'error': 'empty'})
-                if any(k in patch for k in ('check', 'note', 'loc', 'action')):  # a closed job is locked until the admin reopens it
+                if any(k in patch for k in ('check', 'note', 'loc', 'action', 'item_issue', 'prob_ok')):  # a closed job is locked until the admin reopens it
                     r = con().run("SELECT data->>'typ', staff->>'closed', staff->>'closed_typ' FROM cases WHERE id=:i", i=cid)
                     if r and r[0][1] and (r[0][2] or r[0][0]) == r[0][0]:
                         return self._send(409, {'error': 'closed'})

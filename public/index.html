@@ -40,7 +40,8 @@ h1{font-size:24px;font-weight:700;margin:0;line-height:1.25}
 .prog{display:grid;gap:6px;font-size:15px;color:var(--ink);font-weight:600}
 .prog .track{height:10px;border-radius:5px;background:var(--line);overflow:hidden}
 .prog .fill{display:block;height:100%;background:var(--ok);width:0}
-.tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px} .tabs .tab{font-size:13.5px;padding:4px 2px}
+#tabProb[data-n]:not([data-n="0"]){border-color:var(--no);color:var(--no)} #tabProb[aria-pressed="true"]{background:var(--no);border-color:var(--no);color:var(--card)}
 .tab{font:inherit;font-weight:600;font-size:15px;padding:4px 6px;line-height:1.25;min-height:48px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
 .tab[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:var(--card)}
 .plats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
@@ -187,7 +188,13 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
 .note input{font:inherit;font-size:17px;min-height:50px;padding:8px 12px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);width:100%}
 .iform{display:grid;gap:8px} .stp{font-size:16px;color:var(--ink)} .iform .chip{font-size:14px;min-height:40px;padding:2px 12px}
 .items li.miss{background:var(--no-bg)} .items li.miss .v{text-decoration:line-through}
-.items .lr{grid-column:1/-1;display:flex;gap:8px;align-items:stretch}
+.items .lr{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;align-items:stretch}
+.items .lr input{flex:1 1 100%}
+.items .lr .im,.items .lr .ip{flex:1}
+.items .lr .ip{font:inherit;font-size:14px;font-weight:600;min-height:44px;padding:2px 12px;border-radius:10px;border:2px solid var(--part);background:var(--card);color:var(--part);cursor:pointer}
+.items .lr .ip[aria-pressed="true"]{background:var(--part);color:var(--card)}
+.items .ir{grid-column:1/-1;display:grid;gap:6px} .items .ir[hidden]{display:none}
+.items .ir select,.items .ir input{font:inherit;font-size:16px;min-height:44px;padding:6px 10px;border-radius:10px;border:2px solid var(--part);background:var(--card);color:var(--ink);width:100%}
 .items .lr input{flex:1;min-width:0;font:inherit;font-size:16px;min-height:44px;padding:6px 10px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink)}
 .items .lr .im{flex:none;font:inherit;font-size:14px;font-weight:600;min-height:44px;padding:2px 12px;border-radius:10px;border:2px solid var(--no);background:var(--card);color:var(--no);cursor:pointer}
 .items .lr .im[aria-pressed="true"]{background:var(--no);color:var(--card)}
@@ -234,6 +241,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     <div class="prog" aria-live="polite"><span id="progText">กำลังโหลด…</span><span class="track" aria-hidden="true"><span class="fill" id="progFill"></span></span></div>
     <div class="tabs" role="group" aria-label="เลือกรายการ">
       <button class="tab" id="tabTodo" type="button" aria-pressed="true">ยังไม่ตรวจ</button>
+      <button class="tab" id="tabProb" type="button" aria-pressed="false">ติดปัญหา</button>
       <button class="tab" id="tabDone" type="button" aria-pressed="false">รอจบงาน</button>
       <button class="tab" id="tabClosed" type="button" aria-pressed="false">จบแล้ว</button>
       <button class="tab" id="tabPin" type="button" aria-pressed="false">ปักหมุด</button>
@@ -331,11 +339,25 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
   var OUT={goods:"ได้ของคืนครบ",money:"ได้เงินคืนจากแพลตฟอร์ม",loss:"เสียหาย ไม่ได้คืน",none:"ไม่มีความเสียหาย"};
   function isClosed(c){return !!c.closed&&canon(c.closed_typ||c.typ)===c.typ}
   function cameBack(c){return !!c.closed&&!isClosed(c)}
-  function stage(c){return isClosed(c)?3:(c.rank===4||c.check)?2:1}
+  // per item line the receiver can flag a problem (short / damaged but usable -> rework / unusable -> NCR) with a note
+  var ISS={short:"ได้ไม่ครบ",fix:"เสียหาย ใช้ต่อได้ → ส่งแก้ไขงานผลิต",ncr:"ใช้ต่อไม่ได้ → NCR"};
+  function itemIss(c,i){var a=c.item_issue,x=a&&a[i];return x&&ISS[x.k]?x:null}
+  function issList(c){var L=[];c.items.forEach(function(it,i){var x=itemIss(c,i);if(x)L.push([it,x,i])});return L}
+  // a checked card with anything wrong waits in "ติดปัญหา" until the admin says the problem is dealt with
+  function hasProb(c){return c.rank<4&&!!c.check&&(c.check!=="ok"||issList(c).length>0)}
+  function stage(c){return isClosed(c)?3:(c.rank===4||c.check)?(hasProb(c)&&!c.prob_ok?1.5:2):1}
+  function probHTML(c){var L=issList(c),cf=state.cl&&state.cl.id===c.id&&state.cl.k==="prob";
+    var miss=c.items.filter(function(_,i){return itemLoc(c,i)===MISS});
+    return '<div class="cbox back"><b>ติดปัญหา: '+esc(RES[c.check][0])+'</b><ul>'+
+      miss.map(function(it){return '<li class="n">✕ '+esc(itemName(it))+' · ไม่ได้ของ</li>'}).join("")+
+      L.map(function(x){return '<li class="n">! '+esc(itemName(x[0]))+' · '+esc(ISS[x[1].k])+(x[1].n?' · '+esc(x[1].n):'')+'</li>'}).join("")+'</ul>'+
+      '<span class="sub">เปิดข้อพิพาท / ออก NCR / ส่งแก้ไข ให้เรียบร้อยก่อน แล้วแอดมินกดปุ่มด้านล่าง ใบจะไปแท็บ รอจบงาน</span>'+
+      (state.admin&&state.canWrite?(cf?'<b>ยืนยันว่าปัญหาของใบนี้จัดการแล้ว ใช่ไหม</b><div class="nbtns"><button class="nbtn pri" type="button" data-act="c-prob-yes">ใช่ ส่งไปรอจบงาน</button><button class="nbtn" type="button" data-act="c-cancel">ยกเลิก</button></div>':'<button class="nbtn" type="button" data-act="c-prob">ปัญหาจัดการแล้ว → ส่งไปรอจบงาน</button>'):'<span class="sub">รอแอดมินจัดการ</span>')+'</div>'}
   function gotGoods(c){return c.rank<4&&(c.check==="ok"||c.check==="part")}
   function chk(c){var L=[];
     if(c.rank<4)L.push([!!c.check,"คลังตรวจของแล้ว"+(c.check?" ("+RES[c.check][0]+")":"")]);
-    if(gotGoods(c)){L.push([locDone(c),"ระบุคลังที่เก็บ"+(c.items.length>1?" ครบทุกรายการ ("+c.items.filter(function(_,i){return itemLoc(c,i)}).length+"/"+c.items.length+")":"")]);L.push([!!c.sr,"มี SR รับของเข้า"]);if(c.sr)L.push([srState(c)==="ok","SR ตรงกับแพลตฟอร์ม"])}
+    if(gotGoods(c)){L.push([locDone(c),"ระบุคลังที่เก็บ"+(c.items.length>1?" ครบทุกรายการ ("+c.items.filter(function(_,i){return itemLoc(c,i)}).length+"/"+c.items.length+")":"")]);L.push([!!c.sr,"มี SR รับของเข้า"]);if(c.sr)L.push([srState(c)==="ok","SR ตรงกับแพลตฟอร์ม"]);if(c.photos)L.push([c.photos.length>0,"มีรูปของ / ใบเอกสาร"+(c.photos.length?" ("+c.photos.length+" รูป)":"")])}
+    if(hasProb(c))L.push([!!c.prob_ok,"ปัญหาจัดการแล้ว"+(c.prob_ok&&c.prob_at?" ("+stamp("เมื่อ",c.prob_at,c.prob_by)+")":"")]);
     if(c.req&&c.req!=="-")L.push([c.rank===4?!!c.action:(!!c.check&&!need(c)),"แจ้งผลในแพลตฟอร์มแล้ว"]);
     return L}
   function ready(c){return stage(c)===2&&chk(c).every(function(x){return x[0]})}
@@ -343,6 +365,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     if(isClosed(c)){var rp=state.cl&&state.cl.id===c.id&&state.cl.k==="reopen";
       return '<div class="cbox closed"><b>จบงานแล้ว: '+esc(OUT[c.closed]||c.closed)+'</b><span class="sub">'+esc(stamp("จบเมื่อ",c.closed_at,c.closed_by))+'</span>'+(c.closed_why?'<span>เหตุผล: '+esc(c.closed_why)+'</span>':'')+
         (state.admin&&state.canWrite?(rp?'<div class="nbtns"><button class="nbtn pri" type="button" data-act="c-reopen-yes">ใช่ เปิดงานใหม่</button><button class="nbtn" type="button" data-act="c-cancel">ยกเลิก</button></div>':'<button class="nopen" type="button" data-act="c-reopen">เปิดงานใหม่ (ถ้าจบผิด)</button>'):'')+'</div>'}
+    if(stage(c)===1.5)return probHTML(c);
     if(stage(c)!==2)return"";
     var back=cameBack(c)?'<span><b>แพลตฟอร์มเปลี่ยนสถานะหลังจบงาน</b> เดิมจบไว้ตอนเป็น "'+esc(canon(c.closed_typ))+'" ให้ตรวจแล้วจบงานใหม่</span>':'';
     if(!state.admin||!state.canWrite)return '<div class="cbox'+(back?' back':'')+'">'+back+'<span class="sub">รอแอดมินกดจบงาน</span></div>';
@@ -351,7 +374,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     var h='<div class="cbox'+(back?' back':'')+'">'+back+'<b>จบงาน (แอดมิน)</b>'+list;
     if(noSR)return h+'<span class="sub">ได้ของคืนแล้ว ต้องมี SR ก่อนจึงจบงานได้ ให้บัญชีทำ SR แล้วนำเข้าไฟล์ SR ระบบจะตรวจให้ว่าตรงไหม แล้วข้อนี้จะเป็น ✓ เอง</span>'+(state.canImport?'<button class="nbtn" type="button" data-act="c-imp">นำเข้าไฟล์ SR เพื่อตรวจ</button>':'')+'</div>';
     if(!st)return h+'<button class="nbtn" type="button" data-act="c-open">'+(miss.length?'จบงานทั้งที่ยังไม่ครบ (ต้องเขียนเหตุผล)':'จบงาน')+'</button></div>';
-    if(!st.k||st.k==="reopen")return h+'<span>ผลสุดท้ายของใบนี้คืออะไร</span><div class="nbtns">'+Object.keys(OUT).map(function(k){return '<button class="nbtn" type="button" data-act="c-pick-'+k+'">'+OUT[k]+'</button>'}).join("")+'<button class="nopen" type="button" data-act="c-cancel">ปิด</button></div></div>';
+    if(!st.k||st.k==="reopen"||st.k==="prob")return h+'<span>ผลสุดท้ายของใบนี้คืออะไร</span><div class="nbtns">'+Object.keys(OUT).map(function(k){return '<button class="nbtn" type="button" data-act="c-pick-'+k+'">'+OUT[k]+'</button>'}).join("")+'<button class="nopen" type="button" data-act="c-cancel">ปิด</button></div></div>';
     return h+'<label for="cw-'+esc(c.id)+'">'+(miss.length?'เหตุผลที่จบทั้งที่ยังไม่ครบ (ต้องเขียน)':'หมายเหตุ (ไม่เขียนก็ได้)')+'</label><input id="cw-'+esc(c.id)+'" type="text" maxlength="200" placeholder="'+(miss.length?'เช่น แพ้ข้อพิพาท ตัดเป็นขาดทุน':'')+'">'+
       '<b>ยืนยันจบงาน: "'+OUT[st.k]+'" ใช่ไหม</b><div class="nbtns"><button class="nbtn pri" type="button" data-act="c-yes">ใช่ จบงาน</button><button class="nbtn" type="button" data-act="c-cancel">ยกเลิก</button></div></div>'}
   function lvl(c){if(isClosed(c))return 0;if(c.rank===4||c.check==="ok"||c.sr)return 0;var d=daysOpen(c);if(d===null)return 0;return d>LIMIT?3:(d>WARN?2:1)}
@@ -451,14 +474,19 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
   function locs(){var m={};state.cases.forEach(function(c){(c.loc_items&&c.loc_items.length?c.loc_items:[c.loc]).forEach(function(l){l=String(l||"").trim();if(l&&l!==MISS&&l.indexOf(" → ")<0)m[l]=(m[l]||0)+1})});return Object.keys(m).sort(function(x,y){return m[y]-m[x]}).slice(0,6)}
   var MISS="ไม่ได้ของ";
   function itemsHTML(c,total){var edit=state.canWrite&&c.rank<4,id=esc(c.id);
-    var rows=c.items.map(function(it,i){var v=itemLoc(c,i),miss=v===MISS;
+    var rows=c.items.map(function(it,i){var v=itemLoc(c,i),miss=v===MISS,is=itemIss(c,i);
       return '<li'+(miss?' class="miss"':'')+'><div><div class="v">'+esc(it.var&&it.var!=="-"?it.var:it.name)+'</div><div class="n">'+esc(it.var&&it.var!=="-"?it.name:"")+'</div></div><div class="q">×'+esc(it.qty)+'</div>'+
-        (edit?'<div class="lr"><input id="l-'+id+'-'+i+'" data-loc="'+i+'" type="text" maxlength="80" value="'+esc(v)+'" placeholder="เก็บเข้าคลังไหน" aria-label="คลังที่เก็บ รายการที่ '+(i+1)+'"><button type="button" class="im" data-act="im" aria-pressed="'+miss+'">'+(miss?'ยกเลิก':'ไม่ได้ของ')+'</button></div>':
-          (v&&c.rank<4?'<div class="lr ro'+(miss?' n':'')+'">'+(miss?'ไม่ได้รายการนี้':'เก็บเข้าคลัง: '+esc(v))+'</div>':''))+'</li>'}).join("");
+        (edit?'<div class="lr"><input id="l-'+id+'-'+i+'" data-loc="'+i+'" type="text" maxlength="80" value="'+esc(v)+'" placeholder="เก็บเข้าคลังไหน" aria-label="คลังที่เก็บ รายการที่ '+(i+1)+'"><button type="button" class="im" data-act="im" aria-pressed="'+miss+'">'+(miss?'ยกเลิก':'ไม่ได้ของ')+'</button><button type="button" class="ip" data-act="ip" aria-pressed="'+(!!is)+'">มีปัญหา</button></div>'+
+          '<div class="ir"'+(is?'':' hidden')+'><select data-iss="'+i+'" aria-label="ปัญหาของรายการที่ '+(i+1)+'"><option value="">ไม่มีปัญหา</option>'+Object.keys(ISS).map(function(k){return '<option value="'+k+'"'+(is&&is.k===k?' selected':'')+'>'+ISS[k]+'</option>'}).join("")+'</select>'+
+          '<input data-issn="'+i+'" type="text" maxlength="200" value="'+esc(is?is.n:"")+'" placeholder="โน้ตของรายการนี้ เช่น ได้ 2 จาก 4 / กล่องแตก"></div>':
+          ((v&&c.rank<4?'<div class="lr ro'+(miss?' n':'')+'">'+(miss?'ไม่ได้รายการนี้':'เก็บเข้าคลัง: '+esc(v))+'</div>':'')+(is?'<div class="lr ro n">ปัญหา: '+esc(ISS[is.k])+(is.n?' · '+esc(is.n):'')+'</div>':'')))+'</li>'}).join("");
     var head='<span class="lbl">ของในกล่อง รวม '+total+' ชิ้น</span>'+(edit&&!c.check?'<b class="stp">1. ใส่คลังที่เก็บของแต่ละรายการ</b>':'');
     if(!edit)return '<div>'+head+'<ul class="items">'+rows+'</ul></div>';
     return '<form class="iform" data-act="loc">'+head+
       '<ul class="items">'+rows+'</ul>'+(c.check?'<div class="isave"><button type="submit">บันทึกคลังที่แก้</button>'+(c.loc_at?'<small>'+esc(stamp("บันทึกเมื่อ",c.loc_at,c.loc_by))+'</small>':'')+'</div>':'')+'</form>'}
+  function readIss(form,c){var arr=c.items.map(function(){return ""}),ss=form.querySelectorAll("select[data-iss]"),ns=form.querySelectorAll("input[data-issn]"),i;
+    for(i=0;i<ss.length;i++)if(ISS[ss[i].value])arr[+ss[i].dataset.iss]={k:ss[i].value,n:ns[i]?ns[i].value.trim():""};return arr}
+  function issKey(a){return (a||[]).map(function(x){return x&&x.k?x.k+":"+(x.n||""):""}).join("\u0001")}
   function readLoc(form,c){var arr=c.items.map(function(){return ""}),ins=form.querySelectorAll("input[data-loc]"),i;if(!c.items.length)arr=[""];
     for(i=0;i<ins.length;i++)arr[+ins[i].dataset.loc]=ins[i].value.trim();return arr}
   function photoHTML(c){var ps=c.photos||[],id=esc(c.id);
@@ -492,7 +520,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     var arch=state.tab==="closed";
     var inP0=function(c){return state.plat==="all"||c.platform===state.plat};
     var inPlat=function(c){return inP0(c)&&isClosed(c)===arch};
-    var P0=state.cases.filter(inP0),n1=P0.filter(function(c){return stage(c)===1}).length,n2=P0.filter(function(c){return stage(c)===2}).length,n3=P0.filter(function(c){return stage(c)===3}).length;
+    var P0=state.cases.filter(inP0),n1=P0.filter(function(c){return stage(c)===1}).length,n2=P0.filter(function(c){return stage(c)===2}).length,n3=P0.filter(function(c){return stage(c)===3}).length,nP=P0.filter(function(c){return stage(c)===1.5}).length;
     var allWork=state.cases.filter(function(c){return c.rank<4});
     var work=allWork.filter(inPlat), info=state.cases.filter(function(c){return c.rank===4&&inPlat(c)});
     var names=PLATS.slice(); state.cases.forEach(function(c){if(c.platform&&names.indexOf(c.platform)<0)names.push(c.platform)});
@@ -536,10 +564,11 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     $("orphList").innerHTML=O.slice(0,400).map(function(o){return '<div class="orow"><span class="m">'+esc(o.order)+'</span><span>'+esc(o.platform)+' · '+esc(o.sr)+' วันที่ '+esc(o.date)+(o.no?' บรรทัด '+esc(o.no):'')+'</span><span>'+esc(o.code)+' · '+esc(o.name)+'</span>'+(o.no?'<span><b>'+esc(o.qty)+' '+esc(o.unit)+'</b> = '+baht(o.amt)+(o.shared>1?' · ใช้ร่วม '+o.shared+' คำสั่งซื้อ':'')+(o.hint?' · '+esc(o.hint):'')+'</span>':'')+'</div>'}).join("");
     var sel=$("st"); if(document.activeElement!==sel){sel.innerHTML=G.map(function(g){var o=g[1].map(function(x){return '<option value="'+esc(x[0])+'">'+esc(x[1])+'</option>'}).join("");return g[0]?'<optgroup label="'+esc(g[0])+'">'+o+'</optgroup>':o}).join("");sel.value=state.st}
     $("tabPin").textContent="ปักหมุด ("+pinN+")"; $("tabPin").setAttribute("aria-pressed",state.tab==="pin"&&state.st==="all");
-    $("progText").textContent=state.loaded?("ทั้งหมด "+P0.length+" ใบ = ยังไม่ตรวจ "+n1+" + รอจบงาน "+n2+" + จบแล้ว "+n3):"กำลังโหลด…";
+    $("progText").textContent=state.loaded?("ทั้งหมด "+P0.length+" ใบ = ยังไม่ตรวจ "+n1+" + ติดปัญหา "+nP+" + รอจบงาน "+n2+" + จบแล้ว "+n3):"กำลังโหลด…";
     $("progFill").style.width=(P0.length?Math.round(n3/P0.length*100):0)+"%";
     $("tabTodo").textContent="ยังไม่ตรวจ ("+n1+")"; $("tabDone").textContent="รอจบงาน ("+n2+")"; $("tabClosed").textContent="จบแล้ว ("+n3+")";
     $("tabClosed").setAttribute("aria-pressed",arch&&state.st==="all");
+    $("tabProb").textContent="ติดปัญหา ("+nP+")";$("tabProb").setAttribute("data-n",String(nP));$("tabProb").setAttribute("aria-pressed",state.tab==="prob"&&state.st==="all");
     $("tabTodo").setAttribute("aria-pressed",state.tab==="todo"&&state.st==="all"); $("tabDone").setAttribute("aria-pressed",state.tab==="done"&&state.st==="all");
     var byStatus=state.st!=="all"||state.age!=="all"||state.month!=="all"||state.days.length>0;
     $("ages").innerHTML=AGES.map(function(a){var n=a[0]==="all"?"":" ("+state.cases.filter(function(c){var k=state.age;state.age=a[0];var ok=inPlat(c)&&ageOk(c);state.age=k;return ok}).length+")";
@@ -561,7 +590,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     var searching=!!state.q.trim();
     var pool=searching?state.cases:(state.tab!=="todo"||byStatus)?state.cases.filter(inPlat):work;
     var show=pool.filter(function(c){var isDone=!!c.check;
-      var inTab=(byStatus||arch)?true:(state.tab==="pin"?!!c.pinned:(state.tab==="todo"?(!isDone||state.touched[c.id]):stage(c)===2));
+      var inTab=(byStatus||arch)?true:(state.tab==="pin"?!!c.pinned:(state.tab==="todo"?(!isDone||state.touched[c.id]):state.tab==="prob"?stage(c)===1.5:stage(c)===2));
       return searching?qMatch(c):(inTab&&match(c))});
     var nd=function(c){var n=need(c);return (urg2(c)?4:0)+(n==="dispute"?2:n==="confirm"?1:0)};
     show.sort(function(a,b){return (b.pinned?1:0)-(a.pinned?1:0)||(state.tab==="done"?(ready(b)?1:0)-(ready(a)?1:0):0)||nd(b)-nd(a)||Math.max(lvl(b),1)-Math.max(lvl(a),1)||((lvl(a)>=2&&lvl(b)>=2)?daysOpen(b)-daysOpen(a):0)||a.sort-b.sort});
@@ -571,7 +600,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     var el=$("list");
     if(!state.loaded){return}
     if(!show.length){
-      el.innerHTML='<div class="empty">'+(state.q&&O.length?'<b>เลขนี้ไม่มีในไฟล์แพลตฟอร์ม แต่มีใน SR</b>ดูรายการด้านล่าง "SR รับของเข้าแล้ว แต่ไม่มีคำสั่งซื้อในหน้านี้"':state.q?'<b>ไม่เจอเลขนี้ในรายการทั้งหมด '+state.cases.length+' ใบ</b>ตรวจตัวเลขอีกครั้ง ถ้าถูกต้องแล้ว แปลว่าคำสั่งซื้อนี้ยังไม่อยู่ในไฟล์ที่นำเข้า ให้แจ้งแอดมิน':byStatus?'<b>ไม่มีรายการตามตัวกรองนี้</b>กดปุ่ม ✕ ด้านบนเพื่อเอาตัวกรองออก':arch?'<b>ยังไม่มีใบที่จบงาน</b>แอดมินกด "จบงาน" ในแท็บ รอจบงาน แล้วใบจะมาเก็บที่นี่ตามเดือนที่เกิดเรื่อง':state.tab==="pin"?'<b>ยังไม่ได้ปักหมุด</b>กดปุ่ม "ปักหมุด" บนการ์ดที่อยากเก็บไว้ดู':(state.plat!=="all"&&!work.length)?'<b>ยังไม่มีรายการของ '+esc(state.plat)+'</b>รอแอดมินเพิ่มไฟล์ของแพลตฟอร์มนี้':(state.tab==="todo"?(work.length?'<b>ตรวจครบแล้ว</b>ไม่มีกล่องค้างตรวจ':'<b>ยังไม่มีรายการ</b>รอแอดมินเพิ่มรายการพัสดุ'):'<b>ยังไม่ได้ตรวจกล่องไหน</b>กดแท็บ "ยังไม่ตรวจ" เพื่อเริ่ม'))+'</div>';
+      el.innerHTML='<div class="empty">'+(state.q&&O.length?'<b>เลขนี้ไม่มีในไฟล์แพลตฟอร์ม แต่มีใน SR</b>ดูรายการด้านล่าง "SR รับของเข้าแล้ว แต่ไม่มีคำสั่งซื้อในหน้านี้"':state.q?'<b>ไม่เจอเลขนี้ในรายการทั้งหมด '+state.cases.length+' ใบ</b>ตรวจตัวเลขอีกครั้ง ถ้าถูกต้องแล้ว แปลว่าคำสั่งซื้อนี้ยังไม่อยู่ในไฟล์ที่นำเข้า ให้แจ้งแอดมิน':byStatus?'<b>ไม่มีรายการตามตัวกรองนี้</b>กดปุ่ม ✕ ด้านบนเพื่อเอาตัวกรองออก':state.tab==="prob"?'<b>ไม่มีใบที่ติดปัญหา</b>ใบที่ได้ของไม่ครบ ไม่ได้ของ หรือมีรายการเสียหาย จะมาอยู่ที่นี่':arch?'<b>ยังไม่มีใบที่จบงาน</b>แอดมินกด "จบงาน" ในแท็บ รอจบงาน แล้วใบจะมาเก็บที่นี่ตามเดือนที่เกิดเรื่อง':state.tab==="pin"?'<b>ยังไม่ได้ปักหมุด</b>กดปุ่ม "ปักหมุด" บนการ์ดที่อยากเก็บไว้ดู':(state.plat!=="all"&&!work.length)?'<b>ยังไม่มีรายการของ '+esc(state.plat)+'</b>รอแอดมินเพิ่มไฟล์ของแพลตฟอร์มนี้':(state.tab==="todo"?(work.length?'<b>ตรวจครบแล้ว</b>ไม่มีกล่องค้างตรวจ':'<b>ยังไม่มีรายการ</b>รอแอดมินเพิ่มรายการพัสดุ'):'<b>ยังไม่ได้ตรวจกล่องไหน</b>กดแท็บ "ยังไม่ตรวจ" เพื่อเริ่ม'))+'</div>';
     } else if(arch&&!searching){
       var mg={},mh="";show.forEach(function(c){var k=(evDate(c)||"").slice(0,7)||"-";(mg[k]=mg[k]||[]).push(c)});
       Object.keys(mg).sort().reverse().forEach(function(k){mh+='<h2 class="grp">'+(k==="-"?"ไม่มีวันที่":"เกิดเรื่อง "+MON[+k.slice(5,7)-1]+" "+(+k.slice(0,4)+543))+'<span>จบแล้ว '+mg[k].length+' ใบ</span></h2>'+mg[k].map(cardHTML).join("")});
@@ -590,7 +619,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     if(state.busy[id])return; state.busy[id]=true;
     api("act",{id:id,patch:patch}).then(function(j){
       if(j._status===401){gate("login");return}
-      if(!j.ok){say(j.error==="need_sr"?"ต้องมี SR ก่อนจึงจบงานได้":j.error==="need_check"?"คลังต้องตรวจของก่อน":j.error==="need_why"?"ต้องเขียนเหตุผลก่อน":j.error==="closed"?"ใบนี้จบงานแล้ว แก้ไม่ได้ ให้แอดมินเปิดงานใหม่ก่อน":j.error==="admin_only"?"เฉพาะแอดมินจบงานได้":"บันทึกไม่สำเร็จ ลองกดอีกครั้ง");return}
+      if(!j.ok){say(j.error==="need_sr"?"ต้องมี SR ก่อนจึงจบงานได้":j.error==="need_check"?"คลังต้องตรวจของก่อน":j.error==="need_why"?"ต้องเขียนเหตุผลก่อน":j.error==="need_prob"?"ใบนี้ติดปัญหา ให้แอดมินกด ปัญหาจัดการแล้ว ก่อน":j.error==="closed"?"ใบนี้จบงานแล้ว แก้ไม่ได้ ให้แอดมินเปิดงานใหม่ก่อน":j.error==="admin_only"?"เฉพาะแอดมินจบงานได้":"บันทึกไม่สำเร็จ ลองกดอีกครั้ง");return}
       var c=find(id);
       if(c){Object.keys(j.staff).forEach(function(k){c[k]=j.staff[k]})}
       say(okMsg);
@@ -603,6 +632,8 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       if(act==="c-imp"){var ib=document.getElementById("impBox");if(ib){ib.open=true;if(ib.scrollIntoView)ib.scrollIntoView({block:"start"})}return}
       if(act==="c-open"){state.cl={id:id,k:""};render();return}
       if(act==="c-cancel"){state.cl=null;render();return}
+      if(act==="c-prob"){state.cl={id:id,k:"prob"};render();return}
+      if(act==="c-prob-yes"){state.cl=null;write(id,{prob_ok:true,prob_at:new Date().toISOString(),prob_by:uid||""},"ส่งไปรอจบงานแล้ว");return}
       if(act==="c-reopen"){state.cl={id:id,k:"reopen"};render();return}
       if(act.indexOf("c-pick-")===0&&OUT[act.slice(7)]){state.cl={id:id,k:act.slice(7)};render();return}
       if(act==="c-reopen-yes"){state.cl=null;write(id,{closed:"",closed_at:"",closed_by:"",closed_why:"",closed_typ:""},"เปิดงานใหม่แล้ว");return}
@@ -621,26 +652,33 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     if(act.indexOf("a-")===0&&ACT[act.slice(2)]){state.nopen[id]=true;write(id,{action:act.slice(2),action_at:new Date().toISOString(),action_by:uid||""},"บันทึกแล้ว: "+ACT[act.slice(2)]);return}
     if(act==="pin"){write(id,{pinned:!c.pinned},c.pinned?"เลิกปักหมุดแล้ว":"ปักหมุดแล้ว");return}
     if(act==="nq"){var box=document.getElementById("n-"+id);if(box){var t=b.dataset.t,v=box.value.trim();if(v.indexOf(t)<0)box.value=v?v+" · "+t:t;if(box.focus)box.focus()}return}
+    if(act==="ip"){var li2b=b.closest("li"),bx=li2b&&li2b.querySelector(".ir");if(!bx)return;var show=!!bx.hidden;bx.hidden=!show;b.setAttribute("aria-pressed",String(show));
+      var sl=bx.querySelector("select");if(show){if(sl&&!sl.value)sl.value="short";var ni=bx.querySelector("input");if(ni&&ni.focus)ni.focus()}else{if(sl)sl.value=""}return}
     if(act==="im"){var li1=b.closest("li"),in1=li1&&li1.querySelector("input[data-loc]");if(!in1)return;var on=in1.value.trim()!==MISS;in1.value=on?MISS:"";
       if(li1.classList)li1.classList[on?"add":"remove"]("miss");b.textContent=on?"ยกเลิก":"ไม่ได้ของ";b.setAttribute("aria-pressed",String(on));return}
     if(act==="lq"){var lf0=b.closest("form"),li0=lf0?lf0.querySelectorAll("input[data-loc]"):[],k0,emp=0;
       for(k0=0;k0<li0.length;k0++)if(!li0[k0].value.trim())emp++;
       for(k0=0;k0<li0.length;k0++)if(!emp||!li0[k0].value.trim())li0[k0].value=b.dataset.t;return}
-    if(act==="clear-yes"){state.cc=null;state.touched[id]=true;write(id,{check:"",checked_at:"",checked_by:""},"ยกเลิกผลตรวจแล้ว")}
+    if(act==="clear-yes"){state.cc=null;state.touched[id]=true;write(id,{check:"",checked_at:"",checked_by:"",prob_ok:false,prob_at:"",prob_by:""},"ยกเลิกผลตรวจแล้ว")}
     else if(RES[act]){state.touched[id]=true;state.nopen[id]=true;var rp={check:act,checked_at:new Date().toISOString(),checked_by:uid||""};
       // locations typed but not saved yet go along with the result, so nothing typed is lost
       var rf=card.querySelector?card.querySelector("form.iform"):null;
       if(rf&&act!=="none"){var ra=readLoc(rf,c),ro=c.items.map(function(_,i){return itemLoc(c,i)}),nM=ra.filter(function(v){return v===MISS}).length,eI=-1;ra.forEach(function(v,i){if(!v&&eI<0)eI=i});
-        var stop=act==="ok"&&nM?"มีรายการที่กด “ไม่ได้ของ” อยู่ ให้กด ได้ของไม่ครบ":nM===ra.length&&ra.length?"ทุกรายการกด “ไม่ได้ของ” ให้กดปุ่ม ไม่ได้ของ":eI>-1?(act==="ok"?"ใส่คลังที่เก็บให้ครบทุกรายการก่อน":"รายการที่ได้ของให้ใส่คลัง รายการที่ไม่ได้ให้กด “ไม่ได้ของ”"):"";
+        var ri=readIss(rf,c),nI=ri.filter(function(x){return x}).length,noNote=ri.some(function(x){return x&&!x.n});
+        var stop=noNote?"เขียนโน้ตของรายการที่มีปัญหาก่อน":act==="ok"&&nI?"มีรายการที่เลือก “มีปัญหา” อยู่ ให้กด ได้ของไม่ครบ":act==="ok"&&nM?"มีรายการที่กด “ไม่ได้ของ” อยู่ ให้กด ได้ของไม่ครบ":nM===ra.length&&ra.length?"ทุกรายการกด “ไม่ได้ของ” ให้กดปุ่ม ไม่ได้ของ":eI>-1?(act==="ok"?"ใส่คลังที่เก็บให้ครบทุกรายการก่อน":"รายการที่ได้ของให้ใส่คลัง รายการที่ไม่ได้ให้กด “ไม่ได้ของ”"):"";
         if(stop){delete state.touched[id];state.nopen[id]=false;say(stop);if(eI>-1&&act!=="ok"||eI>-1){var fi=rf.querySelectorAll("input[data-loc]")[eI];if(fi&&fi.focus)fi.focus()}return}
-        if(ra.join("\u0001")!==ro.join("\u0001")&&ra.some(function(v){return v})){rp.loc_items=ra;rp.loc=locSum(c,ra);rp.loc_at=rp.checked_at;rp.loc_by=uid||""}}
+        if(ra.join("\u0001")!==ro.join("\u0001")&&ra.some(function(v){return v})){rp.loc_items=ra;rp.loc=locSum(c,ra);rp.loc_at=rp.checked_at;rp.loc_by=uid||""}
+        if(issKey(ri)!==issKey(c.items.map(function(_,i){return itemIss(c,i)||""})))rp.item_issue=ri}
+      rp.prob_ok=false;rp.prob_at="";rp.prob_by="";
       write(id,rp,"บันทึกแล้ว: "+RES[act][0])}
   });
   document.addEventListener("submit",function(e){
     var lf=e.target.closest('form[data-act="loc"]');
     if(lf){e.preventDefault();var lid=lf.closest(".card").dataset.id,lc=find(lid);if(!lc)return;var la=readLoc(lf,lc),ln=la.filter(function(v){return v}).length;
+      var li2=readIss(lf,lc); if(li2.some(function(x){return x&&!x.n})){say("เขียนโน้ตของรายการที่มีปัญหาก่อน");return}
+      if(lc.check==="ok"&&li2.some(function(x){return x})){say("ใบนี้กดไว้ว่า ได้ของครบ ถ้ามีรายการมีปัญหา ให้กด แก้ไข แล้วเลือก ได้ของไม่ครบ");return}
       if(!ln&&!locAny(lc)){say("พิมพ์ชื่อคลังก่อน");return}
-      write(lid,{loc_items:la,loc:locSum(lc,la),loc_at:new Date().toISOString(),loc_by:uid||""},ln<la.length?"บันทึกแล้ว "+ln+" จาก "+la.length+" รายการ ยังเหลืออีก "+(la.length-ln):"บันทึกคลังครบทุกรายการแล้ว");return}
+      write(lid,{item_issue:li2,loc_items:la,loc:locSum(lc,la),loc_at:new Date().toISOString(),loc_by:uid||""},ln<la.length?"บันทึกแล้ว "+ln+" จาก "+la.length+" รายการ ยังเหลืออีก "+(la.length-ln):"บันทึกคลังครบทุกรายการแล้ว");return}
     var f=e.target.closest('form[data-act="note"]'); if(!f)return; e.preventDefault();
     var id=f.closest(".card").dataset.id, tx=f.querySelector("textarea").value.trim(), li=f.querySelector("input[data-loc]"), c0=find(id)||{items:[]};
     var pt={}; if(tx!==(c0.note||"")){pt.note=tx;pt.note_at=tx?new Date().toISOString():"";pt.note_by=tx?(uid||""):""}
@@ -665,6 +703,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
   $("miniBtn").addEventListener("click",function(){setMini(!state.mini)});
   try{if(localStorage.getItem("rc_mini")==="1")setMini(true)}catch(_){}
   $("tabClosed").addEventListener("click",function(){go("closed")});
+  $("tabProb").addEventListener("click",function(){go("prob")});
   $("needBox").addEventListener("click",function(e){if(!e.target.closest||!e.target.closest("#needGo"))return;state.st=nFirst();state.touched={};render();$("st").value=state.st});
   function nFirst(){return state.cases.some(function(c){return !!urg2(c)})?"u:any":state.cases.some(function(c){return need(c)==="dispute"})?"n:dispute":"n:confirm"}
 
