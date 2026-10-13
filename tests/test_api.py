@@ -154,6 +154,36 @@ c, j = call('POST', 'act', {'id': 'a2', 'patch': {'closed': 'none', 'closed_why'
 app.verify_sr = real_verify_sr
 out = app.run_import([], {k: v['data'] for k, v in fake.cases.items()}, {k: v['staff'] for k, v in fake.cases.items()}, {})
 ok('weekly import keeps hand-made cards untouched and raises no warning about them', out[0][MID] == fake.cases[MID]['data'] and not [w for w in out[4].get('warnings', []) if MID in w])
+# ---- weekly import never removes cards and never rewrites what staff already checked
+def fresh():
+    oc = {'x': {'order': 'O1', 'typ': 'ตีกลับ - ของกำลังกลับ', 'status': 'เก่า', 'cancel_date': '2026-09-01', 'items': [{'name': 'A', 'var': '-', 'qty': 2}, {'name': 'B', 'var': '-', 'qty': 1}]},
+          'z': {'order': 'O3', 'typ': 'ตีกลับ - ของถึงร้านแล้ว', 'status': 'เก่า', 'cancel_date': '2025-01-01', 'items': [{'name': 'Z', 'var': '-', 'qty': 1}]},
+          'w': {'order': 'O4', 'typ': 'ตีกลับ - ของกำลังกลับ', 'status': 'เก่า', 'cancel_date': '2026-09-01', 'items': [{'name': 'W', 'var': '-', 'qty': 1}]}}
+    bt = {'x': dict(oc['x'], typ='ตีกลับ - ของถึงร้านแล้ว', status='ใหม่', items=[{'name': 'B', 'var': '-', 'qty': 9}]),
+          'w': dict(oc['w'], status='ใหม่', items=[{'name': 'W', 'var': '-', 'qty': 5}]),
+          'y': {'order': 'O2', 'typ': 'ตีกลับ - ของกำลังกลับ', 'status': 'ใหม่', 'cancel_date': '2026-10-02', 'items': [{'name': 'Y', 'var': '-', 'qty': 1}]}}
+    return oc, bt
+old_staff = {'x': {'check': 'part', 'loc_items': ['E1', 'ไม่ได้ของ']}}
+keep = (app.detect, app.build_sh_fd)
+app.detect = lambda b: ('sh_fd', [])
+old_cards, built = fresh(); app.build_sh_fd = lambda rows, st: built
+out = app.run_import([('f.xlsx', b'one'), ('copy.xlsx', b'one')], old_cards, old_staff, {})
+nc, rp = out[0], out[4]
+ok('import: card missing from the new file is kept', nc['z'] == old_cards['z'])
+ok('import: new card added once even when the same file is chosen twice', 'y' in nc and len(nc) == 4 and rp['totals'] == {'before': 3, 'after': 4, 'new': 1})
+ok('import: platform status refreshes on an existing card', nc['x']['status'] == 'ใหม่' and nc['x']['typ'] == 'ตีกลับ - ของถึงร้านแล้ว')
+ok('import: item list already checked by staff is NOT rewritten, and a warning says so', nc['x']['items'] == old_cards['x']['items'] and any('คงรายการเดิม' in w for w in rp['warnings']))
+ok('import: unchecked card takes the new item list', nc['w']['items'][0]['qty'] == 5)
+ok('import: the database rows handed in are not altered in place', old_cards['x']['status'] == 'เก่า' and old_staff == {'x': {'check': 'part', 'loc_items': ['E1', 'ไม่ได้ของ']}})
+old_cards, built = fresh()
+built['x']['items'] = list(reversed(old_cards['x']['items'])); built['w']['items'] = list(old_cards['w']['items'])
+built['v'] = {'order': 'O9', 'cancel_date': '2026-05-01', 'typ': 'ตีกลับ - ของกำลังกลับ', 'items': [{'name': 'V', 'var': '-', 'qty': 1}]}
+built['z'] = dict(old_cards['z'], status='ใหม่')
+o2 = app.run_import([('f.xlsx', b'two')], old_cards, old_staff, {}, since='2026-08-01')
+ok('import: same items in another order keep the order on the card, with no warning', o2[0]['x']['items'] == old_cards['x']['items'] and not o2[4]['warnings'])
+ok('import with a start date: older NEW card is left out and reported; newer one comes in', 'v' not in o2[0] and 'y' in o2[0] and o2[4]['files'][0]['old'] == 1)
+ok('import with a start date: an OLD card already in the system is still kept and refreshed', o2[0]['z']['status'] == 'ใหม่')
+app.detect, app.build_sh_fd = keep
 app.verify_sr = lambda cards, staff, docs: ({}, {})
 
 # ---- PINs

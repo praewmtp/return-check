@@ -309,6 +309,8 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     <div class="imp">
       <label class="lbl" for="impFiles">เลือกไฟล์ทั้งหมดของสัปดาห์นี้ทีเดียว (Shopee / TikTok / Lazada / SR) ไม่ต้องเปลี่ยนชื่อไฟล์</label>
       <input id="impFiles" type="file" multiple accept=".xlsx,.xls,.csv,.CSV">
+      <label class="lbl" for="impSince">ไม่นำเข้าใบใหม่ที่เกิดก่อนวันที่ (เว้นว่าง = เอาทุกวัน) ใบที่มีอยู่แล้วไม่ถูกตัดออก</label>
+      <input class="pin" id="impSince" type="date" value="2026-08-01">
       <button class="go" type="button" id="impCheck">1. ตรวจไฟล์ (ยังไม่บันทึก)</button>
       <div class="list" id="impOut" aria-live="polite"></div>
       <button class="go ok" type="button" id="impCommit" hidden>2. ยืนยันนำเข้า</button>
@@ -791,7 +793,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
   function impSend(commit){
     if(impBusy||!impFilesB64)return; impBusy=true; $("impCheck").disabled=true; $("impCommit").disabled=true;
     if(!commit)$("impOut").innerHTML='<div class="empty"><b>กำลังอ่านไฟล์…</b>ยังไม่มีการบันทึก</div>';
-    api("import",{files:impFilesB64,commit:!!commit}).then(function(j){
+    api("import",{files:impFilesB64,commit:!!commit,since:$("impSince").value}).then(function(j){
       if(j._status===401){gate("login");return}
       if(!j.preview){$("impOut").innerHTML='<div class="prow bad"><b>อ่านไฟล์ไม่ได้</b><span>'+esc(j.error==="admin_only"?"ต้องเข้าด้วย PIN แอดมิน":(j.detail||j.error||"ลองอีกครั้ง"))+'</span></div>';return}
       $("impOut").innerHTML=(commit&&j.ok?'<div class="psum"><b>นำเข้าเรียบร้อย</b><span>รายการในหน้าเว็บอัปเดตแล้ว</span></div>':'')+previewHTML(j.preview);

@@ -592,7 +592,7 @@ def verify_sr(cards, staff, srs):
 MANUAL_CATS = {'ภายใน': 'ภายใน - ลดหนี้คืนของ', 'ย้ายคลัง': 'ย้ายคลัง - รับของเข้า', 'Shopee': 'สร้างเอง - รอของกลับ', 'TikTok': 'สร้างเอง - รอของกลับ', 'Lazada': 'สร้างเอง - รอของกลับ'}
 
 
-def run_import(files, cards, staff, sr_docs):
+def run_import(files, cards, staff, sr_docs, since=''):
     """files: [(name, bytes)]. cards/staff: id -> dict (current database). sr_docs: {sr_no: doc}.
     Returns (new_cards, new_sr_docs, sr_by_card, sr_meta, report). Nothing is written here."""
     parsed, unknown = [], []
@@ -608,7 +608,7 @@ def run_import(files, cards, staff, sr_docs):
     parsed.sort(key=lambda x: x[0])
     new_cards = collections.OrderedDict((k, dict(v)) for k, v in cards.items())
     new_sr = dict(sr_docs)
-    rep, seen_md5 = [], {}
+    rep, seen_md5, kept_items = [], {}, []
     failed_orders = {c['order'] for cid, c in cards.items() if cid.startswith('fd-') and 'ไม่มีพัสดุตีกลับ' not in c.get('typ', '') and 'ไม่อยู่ในรายการตีกลับ' not in c.get('typ', '')}
     for _, name, kind, rows, md5 in parsed:
         st = dict(rows=0, card_rows=0, skip=collections.Counter())
@@ -641,8 +641,19 @@ def run_import(files, cards, staff, sr_docs):
             built = build_lz_od(rows, st)
         else:
             built = build_lz_rt(rows, st)
-        n_new = n_chg = n_same = 0
+        n_new = n_chg = n_same = n_old = 0
+        ikey = lambda its: sorted((str(i.get('name')), str(i.get('var')), str(i.get('qty'))) for i in (its or []))
         for cid, c in built.items():
+            old, sf = new_cards.get(cid), staff.get(cid) or {}
+            if not old and since and (c.get('req_date') or c.get('cancel_date') or c.get('date') or since)[:10] < since:
+                n_old += 1  # older than the start date the admin chose: not brought in (cards already in the system are never dropped)
+                continue
+            if old and c.get('items') != old.get('items') and ikey(c.get('items')) == ikey(old.get('items')):
+                c = dict(c, items=old.get('items'))  # same items in another order: keep the order already on the card
+            if old and (sf.get('check') or sf.get('loc_items') or sf.get('item_issue')) and c.get('items') != old.get('items'):
+                # staff already recorded results line by line against the old item list: keep that list, it is the evidence
+                c = dict(c, items=old.get('items'))
+                kept_items.append(cid)
             if cid not in new_cards:
                 n_new += 1
             elif new_cards[cid] != c:
@@ -651,8 +662,9 @@ def run_import(files, cards, staff, sr_docs):
                 n_same += 1
             new_cards[cid] = c
         skipped = dict(st['skip'])
-        rep.append(dict(name=name, kind=kind, label=KIND_LABEL[kind], rows=st['rows'], card_rows=st['card_rows'], cards=len(built), new=n_new,
-                        changed=n_chg, same=n_same, skipped=skipped, ok=st['rows'] == st['card_rows'] + sum(skipped.values())))
+        rep.append(dict(name=name, kind=kind, label=KIND_LABEL[kind], rows=st['rows'], card_rows=st['card_rows'], cards=len(built) - n_old, new=n_new,
+                        changed=n_chg, same=n_same, skipped=skipped, old=n_old,
+                        note=('ไม่นำเข้า %d ใบ เพราะเกิดก่อนวันที่ %s' % (n_old, since)) if n_old else '', ok=st['rows'] == st['card_rows'] + sum(skipped.values())))
     sr_by_card, sr_meta = verify_sr(new_cards, staff, list(new_sr.values()))
     # duplicates across the whole set after the import
     warn = []
@@ -664,6 +676,8 @@ def run_import(files, cards, staff, sr_docs):
     dups('รหัสขอคืน', lambda c: c.get('req'))
     dups('เลขพัสดุขาไป', lambda c: c.get('out_track'))
     dups('เลขพัสดุขาคืน', lambda c: c.get('ret_track'))
+    if kept_items:
+        warn.append('รายการสินค้าในไฟล์ใหม่ต่างจากที่ตรวจไว้แล้ว %d ใบ: คงรายการเดิมไว้ ไม่แก้ (%s)' % (len(set(kept_items)), ', '.join(sorted(set(kept_items))[:10])))
     for cid, c in new_cards.items():
         if c.get('typ') not in TYPES and not c.get('manual'):
             warn.append('การ์ด %s มีสถานะที่ไม่รู้จัก: %s' % (cid, c.get('typ')))
@@ -1010,11 +1024,17 @@ class handler(BaseHTTPRequestHandler):
                 if not files:
                     return self._send(400, {'error': 'no_files'})
                 cards, staff, _ = load_all()
-                new_cards, new_sr, sr_by, sr_meta, rep = run_import(files, cards, staff, meta_get('sr_docs') or {})
+                new_cards, new_sr, sr_by, sr_meta, rep = run_import(files, cards, staff, meta_get('sr_docs') or {}, since=(str(b.get('since') or '')[:10] if re.match(r'^\d{4}-\d{2}-\d{2}$', str(b.get('since') or '')[:10]) else ''))
                 if not b.get('commit'):
                     return self._send(200, {'preview': rep})
                 if not rep['ok']:
                     return self._send(400, {'error': 'not_ok', 'preview': rep})
+                # evidence: before platform fields of an existing card are refreshed, the old values go into the log
+                for cid, old in cards.items():
+                    new = new_cards.get(cid) or {}
+                    diff = {k: [old.get(k), new.get(k)] for k in set(old) | set(new) if old.get(k) != new.get(k)}
+                    if diff:
+                        log(who['n'], 'import_change', {'id': cid, 'was_now': diff})
                 self._save(new_cards, sr_by, sr_meta, new_sr)
                 hist = (meta_get('imports') or [])[-19:] + [{'at': dt.datetime.utcnow().isoformat() + 'Z', 'by': who['n'], 'files': [f['name'] for f in rep['files']],
                                                              'new': rep['totals']['new'], 'after': rep['totals']['after']}]
