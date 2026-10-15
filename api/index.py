@@ -57,6 +57,10 @@ def read_xlsx(b):
 TYPES = ['ขอคืนสินค้า - รอลูกค้าส่งของกลับ', 'ขอคืนสินค้า - ของกำลังส่งกลับ', 'ขอคืนสินค้า - ของถึงร้านแล้ว', 'คืนเงินอย่างเดียว - ไม่มีของกลับ',
          'ตีกลับ - ของกำลังกลับ', 'ตีกลับ - ของถึงร้านแล้ว', 'ตีกลับ - ยังไม่ทราบว่าถึงร้าน', 'ส่งแล้วยกเลิก - ไม่มีพัสดุตีกลับ']
 
+# names used before the 8 fixed types existed; the page shows them under the matching new type, so they are not a problem
+OLD_TYPES = {'ขอคืนสินค้า - ขนส่งแจ้งส่งคืนถึงร้านแล้ว', 'ขอคืนสินค้า - คืนเงินแล้ว มีพัสดุส่งคืน', 'คืนเงินอย่างเดียว - ลูกค้าไม่ส่งของคืน',
+             'ส่งแล้วโดนยกเลิก - ของกำลังตีกลับ', 'ส่งแล้วโดนยกเลิก - ขนส่งแจ้งคืนถึงร้านแล้ว', 'ส่งแล้วโดนยกเลิก - ไม่อยู่ในรายการตีกลับ'}
+
 KIND_LABEL = {
     'sh_rr': 'Shopee คืนเงิน/คืนสินค้า', 'sh_fd': 'Shopee จัดส่งไม่สำเร็จ', 'sh_cc': 'Shopee ยกเลิก',
     'tt_od': 'TikTok คำสั่งซื้อที่ยกเลิก', 'tt_rt': 'TikTok คืนเงิน/คืนสินค้า',
@@ -679,7 +683,7 @@ def run_import(files, cards, staff, sr_docs, since=''):
     if kept_items:
         warn.append('รายการสินค้าในไฟล์ใหม่ต่างจากที่ตรวจไว้แล้ว %d ใบ: คงรายการเดิมไว้ ไม่แก้ (%s)' % (len(set(kept_items)), ', '.join(sorted(set(kept_items))[:10])))
     for cid, c in new_cards.items():
-        if c.get('typ') not in TYPES and not c.get('manual'):
+        if c.get('typ') not in TYPES and c.get('typ') not in OLD_TYPES and not str(c.get('typ') or '').startswith('ส่งแล้วโดนยกเลิก') and not c.get('manual'):
             warn.append('การ์ด %s มีสถานะที่ไม่รู้จัก: %s' % (cid, c.get('typ')))
         if not c.get('order') or not c.get('items'):
             warn.append('การ์ด %s ไม่มีรหัสคำสั่งซื้อหรือรายการสินค้า' % cid)
