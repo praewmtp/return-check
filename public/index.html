@@ -138,6 +138,15 @@ h1{font-size:24px;font-weight:700;margin:0;line-height:1.25}
 .psum.bad{border-color:var(--no);background:var(--no-bg)}
 .ph{display:grid;gap:8px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
 .ph input[type=text]{font:inherit;font-size:16px;min-height:46px;padding:6px 10px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);width:100%}
+#cam{position:fixed;inset:0;z-index:50;background:#000;display:flex;flex-direction:column} #cam[hidden]{display:none}
+#camV{flex:1;width:100%;min-height:0;object-fit:contain;background:#000}
+.camtop{position:absolute;top:calc(env(safe-area-inset-top,0px) + 8px);left:0;right:0;text-align:center;color:#fff;font-size:15px;text-shadow:0 1px 3px #000}
+.cambar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;padding:14px 16px calc(env(safe-area-inset-bottom,0px) + 18px);background:#000;color:#fff}
+#camX{justify-self:start;font:inherit;font-size:17px;font-weight:700;min-height:48px;padding:4px 20px;border-radius:999px;border:2px solid #fff;background:transparent;color:#fff;cursor:pointer}
+#camS{width:76px;height:76px;border-radius:50%;border:6px solid #fff;background:#fff;box-shadow:inset 0 0 0 4px #000;cursor:pointer}
+#camS:active{transform:scale(.92)} #camN{justify-self:end;font-size:14px;text-align:right}
+#camF{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .12s} #camF.on{opacity:.7}
+button.pbtn{font:inherit;background:var(--card)}
 .pbtns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .pbtn{display:flex;align-items:center;justify-content:center;text-align:center;min-height:52px;padding:6px 12px;border-radius:12px;border:2px dashed var(--brand);color:var(--brand);font-size:16px;font-weight:700;cursor:pointer;position:relative;overflow:hidden}
 .pbtn input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
@@ -518,7 +527,8 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
   function issKey(a){return (a||[]).map(function(x){return x&&x.k?x.k+":"+(x.n||""):""}).join("\u0001")}
   function readLoc(form,c){var arr=c.items.map(function(){return ""}),ins=form.querySelectorAll("input[data-loc]"),i;if(!c.items.length)arr=[""];
     for(i=0;i<ins.length;i++)arr[+ins[i].dataset.loc]=ins[i].value.trim();return arr}
-  function pbtns(cid){var id=esc(cid);return '<div class="pbtns"><label class="pbtn">📷 ถ่ายรูปเลย<input type="file" accept="image/*" capture="environment" data-pfile="'+id+'"></label>'+
+  var CAMFB=false;try{CAMFB=localStorage.getItem("rc_camfb")==="1"}catch(_){}
+  function pbtns(cid){var id=esc(cid);return '<div class="pbtns">'+(CAMFB?'<label class="pbtn">📷 ถ่ายรูปเลย<input type="file" accept="image/*" capture="environment" data-pfile="'+id+'"></label>':'<button type="button" class="pbtn" data-cam="'+id+'">📷 ถ่ายรูปเลย</button><input type="file" accept="image/*" capture="environment" data-pfile="'+id+'" data-camfb="'+id+'" hidden>')+
     '<label class="pbtn">🖼 เลือกรูปในเครื่อง<input type="file" accept="image/*" multiple data-pfile="'+id+'"></label></div>'}
   function photoHTML(c){var ps=c.photos||[],id=esc(c.id);
     return '<div class="ph" data-ph="'+id+'"><span class="lbl">รูปหลักฐาน'+(ps.length?' ('+ps.length+' รูป) แตะรูปเพื่อขยาย กดค้างเพื่อบันทึกลงเครื่อง':' (ใช้ยื่นแพลตฟอร์มเวลาได้ของไม่ครบ / ข้อพิพาท)')+'</span>'+
@@ -869,12 +879,13 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     im.onerror=function(){URL.revokeObjectURL(u);rej()};im.src=u})}
   function small(file){return shrink(file,1600,0.8).then(function(b){return b.length<=900000?b:shrink(file,1280,0.65).then(function(b2){return b2.length<=900000?b2:shrink(file,1000,0.5)})})}
   document.addEventListener("change",function(e){var inp=e.target;if(!inp||!inp.dataset||!inp.dataset.pfile)return;
-    var id=inp.dataset.pfile,c=find(id),files=Array.prototype.slice.call(inp.files||[]);if(!c||!files.length||state.busy.photo)return;
+    sendPhotos(inp.dataset.pfile,Array.prototype.slice.call(inp.files||[]))});
+  function sendPhotos(id,files,after){var c=find(id);if(!c||!files.length||state.busy.photo){if(after)after(0);return}
     var nb=document.getElementById("pn-"+id),note=nb?nb.value.trim():"",msg=document.getElementById("pm-"+id),done=0,bad=0,stop="";
     if((c.photos||[]).length+files.length>20){state.pmsg[id]="การ์ดหนึ่งใบเก็บได้ 20 รูป ตอนนี้มี "+(c.photos||[]).length+" รูป เลือกใหม่ให้น้อยลง";render();return}
     state.busy.photo=true;if(c.check)state.nopen[id]=true;c.photos=c.photos||[];
     function next(i){
-      if(i>=files.length||stop){delete state.busy.photo;state.pmsg[id]=stop||("ส่งรูปแล้ว "+done+" รูป"+(bad?" · ส่งไม่ได้ "+bad+" รูป ให้เลือกรูปนั้นใหม่":""));say(state.pmsg[id]);render();return}
+      if(i>=files.length||stop){delete state.busy.photo;state.pmsg[id]=stop||("ส่งรูปแล้ว "+done+" รูป"+(bad?" · ส่งไม่ได้ "+bad+" รูป ให้เลือกรูปนั้นใหม่":""));say(state.pmsg[id]);render();if(after)after(done,bad,stop);return}
       say("กำลังส่งรูป "+(i+1)+" / "+files.length+" … อย่าปิดหน้านี้");
       if(msg)msg.textContent="กำลังส่งรูป "+(i+1)+" / "+files.length+" … อย่าปิดหน้านี้";
       small(files[i]).then(function(b){return api("photo_add",{id:id,b64:b,note:note})}).then(function(j){
@@ -882,7 +893,33 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
         else if(j.ok){c.photos.push(j.photo);done++}
         else{bad++;if(j.error==="too_many")stop="การ์ดนี้ครบ 20 รูปแล้ว (ส่งได้ "+done+" รูป)"}
       }).catch(function(){bad++}).then(function(){next(i+1)})}
-    next(0)});
+    next(0)}
+  /* ---------- camera inside the page: open once, shoot many, each shot is sent in the background ---------- */
+  var CAM={id:null,stream:null,q:[],shot:0,sent:0,bad:0};
+  function camEl(){var d=document.getElementById("cam");if(d)return d;d=document.createElement("div");d.id="cam";d.hidden=true;
+    d.innerHTML='<video id="camV" playsinline muted autoplay></video><div class="camtop" id="camT"></div><div class="cambar"><button type="button" id="camX">เสร็จ</button><button type="button" id="camS" aria-label="ถ่าย"></button><span id="camN"></span></div><div id="camF"></div>';
+    document.body.appendChild(d);
+    document.getElementById("camS").addEventListener("click",camShot);
+    document.getElementById("camX").addEventListener("click",camClose);
+    return d}
+  function camInfo(){var c=find(CAM.id);document.getElementById("camN").textContent="ถ่าย "+CAM.shot+" · ส่งแล้ว "+CAM.sent+(CAM.bad?" · ไม่สำเร็จ "+CAM.bad:"");
+    document.getElementById("camT").textContent=c?(c.order||"")+" · "+(c.photos||[]).length+" รูปในใบนี้":""}
+  // when the live camera cannot run here (some in-app browsers), switch this phone to the phone's own camera button for good
+  function camFallback(id,why){var fb=document.querySelector('input[data-camfb="'+id+'"]');CAMFB=true;try{localStorage.setItem("rc_camfb","1")}catch(_){}say(why);if(fb)fb.click();render()}
+  function camOpen(id){if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)){camFallback(id,"เบราว์เซอร์นี้เปิดกล้องในหน้าไม่ได้ ใช้กล้องของเครื่องแทน");return}
+    var d=camEl();CAM={id:id,stream:null,q:[],shot:0,sent:0,bad:0};
+    navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}},audio:false}).then(function(st){
+      CAM.stream=st;var v=document.getElementById("camV");v.srcObject=st;d.hidden=false;document.body.style.overflow="hidden";camInfo();var p=v.play();if(p&&p.catch)p.catch(function(){})
+    }).catch(function(){camFallback(id,"เปิดกล้องในหน้านี้ไม่ได้ (ยังไม่อนุญาตกล้อง หรือเปิดผ่านแอปอื่น เช่น LINE) ใช้กล้องของเครื่องแทน · ถ้าเปิดใน Safari/Chrome จะถ่ายต่อเนื่องได้")})}
+  function camShot(){var v=document.getElementById("camV");if(!v.videoWidth||!CAM.id)return;var k=Math.min(1,1600/Math.max(v.videoWidth,v.videoHeight)),cv=document.createElement("canvas");
+    cv.width=Math.round(v.videoWidth*k);cv.height=Math.round(v.videoHeight*k);cv.getContext("2d").drawImage(v,0,0,cv.width,cv.height);
+    var f=document.getElementById("camF");f.className="on";setTimeout(function(){f.className=""},120);
+    cv.toBlob(function(b){if(!b)return;CAM.shot++;CAM.q.push(b);camInfo();camPump()},"image/jpeg",0.82)}
+  function camPump(){if(state.busy.photo||!CAM.q.length)return;var id=CAM.id,batch=CAM.q.splice(0);
+    sendPhotos(id,batch,function(done,bad){CAM.sent+=done||0;CAM.bad+=bad||0;if(CAM.id===id)camInfo();camPump()})}
+  function camClose(){var d=document.getElementById("cam");if(CAM.stream)CAM.stream.getTracks().forEach(function(t){t.stop()});CAM.stream=null;if(d)d.hidden=true;document.body.style.overflow="";
+    var left=CAM.q.length;CAM.id=CAM.q.length?CAM.id:null;say(left?"กำลังส่งรูปที่เหลือ "+left+" รูป":"ถ่ายแล้ว "+CAM.shot+" รูป ส่งแล้ว "+CAM.sent+" รูป");render()}
+  document.addEventListener("click",function(e){var b=e.target&&e.target.closest&&e.target.closest("button[data-cam]");if(b)camOpen(b.dataset.cam)});
   document.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;
     var im=t.closest("img[data-pid]");if(im){var p=+im.dataset.pid;state.pbig=state.pbig===p?null:p;state.pdel=null;render();return}
     var b=t.closest("button[data-pact]");if(!b)return;var pid=+b.dataset.pid,card=b.closest(".card"),c=card&&find(card.dataset.id);if(!c)return;
