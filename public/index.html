@@ -127,6 +127,8 @@ h1{font-size:24px;font-weight:700;margin:0;line-height:1.25}
 .imp{display:grid;gap:12px;padding:4px 0 8px}
 .imp input[type=file]{font:inherit;font-size:15px;width:100%;padding:12px;border-radius:10px;border:2px dashed var(--line);background:var(--card);color:var(--ink)}
 .imp .pin{font:inherit;font-size:18px;min-height:50px;padding:8px 12px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);width:100%}
+.seg{display:flex;flex-wrap:wrap;gap:6px} .seg button{font:inherit;font-size:15px;font-weight:700;min-height:44px;padding:4px 14px;border-radius:999px;border:2px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer} .seg button[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:var(--card)}
+#mkBar button{width:100%;margin-bottom:10px}
 .mkrow{display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:8px;margin-bottom:8px} .imp .go.alt{background:var(--card);color:var(--brand);border:2px dashed var(--brand)} .pok{color:var(--ok);font-weight:700}
 .imp .go{font:inherit;font-size:17px;font-weight:700;min-height:52px;border-radius:12px;border:0;background:var(--brand);color:var(--card);cursor:pointer}
 .imp .go.ok{background:var(--ok);} .imp .go[disabled]{opacity:.45;cursor:default}
@@ -136,6 +138,7 @@ h1{font-size:24px;font-weight:700;margin:0;line-height:1.25}
 .psum.bad{border-color:var(--no);background:var(--no-bg)}
 .ph{display:grid;gap:8px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
 .ph input[type=text]{font:inherit;font-size:16px;min-height:46px;padding:6px 10px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);width:100%}
+.pbtns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .pbtn{display:flex;align-items:center;justify-content:center;text-align:center;min-height:52px;padding:6px 12px;border-radius:12px;border:2px dashed var(--brand);color:var(--brand);font-size:16px;font-weight:700;cursor:pointer;position:relative;overflow:hidden}
 .pbtn input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
 .pbtn:focus-within{outline:3px solid var(--brand);outline-offset:2px}
@@ -192,8 +195,8 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
 .iform{display:grid;gap:8px} .stp{font-size:16px;color:var(--ink)} .iform .chip{font-size:14px;min-height:40px;padding:2px 12px}
 .items li.miss{background:var(--no-bg)} .items li.miss .v{text-decoration:line-through}
 .items .lr{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;align-items:stretch}
-.items .lr input{flex:1 1 100%}
-.items .lr .im,.items .lr .ip{flex:1}
+.items .lr input[data-loc]{flex:1 1 100%}
+.items .lr .im,.items .lr .ip{flex:1 1 0}
 .items .lr .ip{font:inherit;font-size:14px;font-weight:600;min-height:44px;padding:2px 12px;border-radius:10px;border:2px solid var(--part);background:var(--card);color:var(--part);cursor:pointer}
 .items .lr .ip[aria-pressed="true"]{background:var(--part);color:var(--card)}
 .items .ir{grid-column:1/-1;display:grid;gap:6px} .items .ir[hidden]{display:none}
@@ -272,6 +275,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
   <div id="ro" class="ro" hidden>ดูได้อย่างเดียว บัญชีนี้ยังกดบันทึกไม่ได้ ให้เจ้าของหน้าเพิ่มสิทธิ์ "Contributor"</div>
   <div id="needBox" class="alert over" role="alert" hidden></div>
   <div id="alertBox" class="alert" role="alert" hidden></div>
+  <div id="mkBar" hidden></div>
   <main class="list" id="list" aria-live="polite">
     <div class="empty"><b>กำลังโหลดรายการ</b>รายการพัสดุที่ต้องตรวจจะแสดงตรงนี้</div>
   </main>
@@ -286,9 +290,10 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
   </details>
   <details class="admin" id="mkBox" hidden><summary>＋ สร้างใบรับคืนเอง (ภายใน / ย้ายคลัง / อื่นๆ)</summary>
     <form class="imp" id="mkForm" autocomplete="off">
-      <label class="lbl" for="mkCat">หมวด</label><select class="pin" id="mkCat"><option>ภายใน</option><option>ย้ายคลัง</option><option>Shopee</option><option>TikTok</option><option>Lazada</option></select>
+      <span class="lbl">หมวด (ใบจะอยู่ในหมวดนี้)</span><div class="seg" id="mkSeg"><button type="button" data-cat="ภายใน" aria-pressed="true">ภายใน (ลดหนี้)</button><button type="button" data-cat="ย้ายคลัง" aria-pressed="false">ย้ายคลัง</button><button type="button" data-cat="Shopee" aria-pressed="false">Shopee</button><button type="button" data-cat="TikTok" aria-pressed="false">TikTok</button><button type="button" data-cat="Lazada" aria-pressed="false">Lazada</button></div><input type="hidden" id="mkCat" value="ภายใน">
       <label class="lbl" for="mkRef" id="mkRefL">เลขใบลดหนี้ / เลขเอกสาร</label><input class="pin" id="mkRef" type="text" maxlength="60" required>
-      <label class="lbl" for="mkCust" id="mkCustL">รหัสลูกค้า</label><input class="pin" id="mkCust" type="text" maxlength="80">
+      <div id="mkCustW"><label class="lbl" for="mkCust" id="mkCustL">รหัสลูกค้า</label><input class="pin" id="mkCust" type="text" maxlength="80"></div>
+      <div class="frow" id="mkTr" hidden><label class="lbl">จากคลัง<input class="pin" id="mkFrom" type="text" maxlength="38"></label><label class="lbl">ไปคลัง<input class="pin" id="mkTo" type="text" maxlength="38"></label></div>
       <label class="lbl" for="mkDate">วันที่เกิดเรื่อง</label><input class="pin" id="mkDate" type="date">
       <span class="lbl">รายการสินค้า และจำนวน</span><div id="mkItems"></div>
       <button class="go alt" type="button" id="mkAdd">＋ เพิ่มรายการ</button>
@@ -464,7 +469,7 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     } else {
       var dis=(state.canWrite&&!state.busy[c.id])?'':' disabled';
       var np=(c.photos||[]).length;
-      h+=(c.photos?'<div class="ask"><b class="stp">2. ถ่ายรูปของ + ใบเอกสาร</b> '+(np?'<span class="pok">มีแล้ว '+np+' รูป ✓</span>':'ต้องมีอย่างน้อย 1 รูป')+'</div><label class="pbtn">＋ ถ่ายรูป / เลือกรูป<input type="file" accept="image/*" multiple data-pfile="'+esc(c.id)+'"></label>':'')+
+      h+=(c.photos?'<div class="ask"><b class="stp">2. ถ่ายรูปของ + ใบเอกสาร</b> '+(np?'<span class="pok">มีแล้ว '+np+' รูป ✓</span>':'ต้องมีอย่างน้อย 1 รูป')+'</div>'+pbtns(c.id)+'':'')+
         '<div class="ask"><b class="stp">'+(c.photos?3:2)+'. กดผลตรวจ</b> เปิดกล่องดูแล้วของครบไหม</div><div class="btns">'+
         '<button class="btn b-ok" type="button" data-act="ok"'+dis+'><span class="ic" aria-hidden="true">✓</span>ได้ของครบ</button>'+
         '<button class="btn b-part" type="button" data-act="part"'+dis+'><span class="ic" aria-hidden="true">!</span>ได้ของไม่ครบ</button>'+
@@ -513,13 +518,15 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
   function issKey(a){return (a||[]).map(function(x){return x&&x.k?x.k+":"+(x.n||""):""}).join("\u0001")}
   function readLoc(form,c){var arr=c.items.map(function(){return ""}),ins=form.querySelectorAll("input[data-loc]"),i;if(!c.items.length)arr=[""];
     for(i=0;i<ins.length;i++)arr[+ins[i].dataset.loc]=ins[i].value.trim();return arr}
+  function pbtns(cid){var id=esc(cid);return '<div class="pbtns"><label class="pbtn">📷 ถ่ายรูปเลย<input type="file" accept="image/*" capture="environment" data-pfile="'+id+'"></label>'+
+    '<label class="pbtn">🖼 เลือกรูปในเครื่อง<input type="file" accept="image/*" multiple data-pfile="'+id+'"></label></div>'}
   function photoHTML(c){var ps=c.photos||[],id=esc(c.id);
     return '<div class="ph" data-ph="'+id+'"><span class="lbl">รูปหลักฐาน'+(ps.length?' ('+ps.length+' รูป) แตะรูปเพื่อขยาย กดค้างเพื่อบันทึกลงเครื่อง':' (ใช้ยื่นแพลตฟอร์มเวลาได้ของไม่ครบ / ข้อพิพาท)')+'</span>'+
       (ps.length?'<div class="pgrid">'+ps.map(function(p){var mine=ME&&(ME.role==="admin"||p.by===ME.name);
         return '<figure'+(state.pbig===p.id?' class="big"':'')+'><img data-pid="'+p.id+'" alt="รูปหลักฐาน '+esc(p.note||"")+'"><figcaption>'+(p.note?'<b>'+esc(p.note)+'</b>':'')+'<small>'+esc(thDate(p.at))+(p.by?' · '+esc(p.by):'')+'</small>'+
           (mine&&state.canWrite?'<button type="button" data-pact="del" data-pid="'+p.id+'">'+(state.pdel===p.id?'แตะอีกครั้งเพื่อลบ':'ลบรูป')+'</button>':'')+'</figcaption></figure>'}).join("")+'</div>':'')+
       (!state.canWrite?'':'<label class="lbl" for="pn-'+id+'">หมายเหตุของรูป (ใส่ก่อนเลือกรูป)</label><input id="pn-'+id+'" type="text" maxlength="200" placeholder="เช่น กล่องบุบ ขาด 2 หลอด">'+
-      '<label class="pbtn">＋ ถ่ายรูป / เลือกรูป (เลือกหลายรูปได้)<input type="file" accept="image/*" multiple data-pfile="'+id+'"></label>')+
+      pbtns(c.id))+
       '<div class="lbl pmsg" id="pm-'+id+'" aria-live="polite">'+esc(state.pmsg[c.id]||"")+'</div></div>'}
   function noteHTML(c){var has=c.note&&String(c.note).trim(), goods=c.rank<4, got=c.check==="ok"||c.check==="part";
     var lAny=locAny(c),lAll=locDone(c);
@@ -623,6 +630,8 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     var ids={};show=show.filter(function(c){if(ids[c.id])return false;ids[c.id]=1;return true});
     if(searching)$("act").innerHTML='<button type="button" data-clear="q">ค้นหาทุกแท็บ: เจอ '+show.length+' ใบ ✕</button>';
     $("foot").textContent="รายการทั้งหมด "+state.cases.length+" ใบ (คลังตรวจ "+allWork.length+" + แอดมิน "+(state.cases.length-allWork.length)+") · กำลังแสดง "+show.length+" ใบ";
+    var mkc=state.plats.length===1&&(state.plats[0]==="ภายใน"||state.plats[0]==="ย้ายคลัง")?state.plats[0]:"";
+    $("mkBar").hidden=!(mkc&&state.admin&&!$("mkBox").hidden);$("mkBar").innerHTML=mkc?'<button class="nbtn" type="button" data-mk="'+mkc+'">＋ สร้างใบ'+mkc+'</button>':"";
     var el=$("list");
     if(!state.loaded){return}
     if(!show.length){
@@ -814,18 +823,23 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
       api("restore",o).then(function(j){$("resOut").textContent=j.ok?"ย้ายแล้ว "+j.cards+" ใบ":"ย้ายไม่ได้: "+(j.error||"");if(j.ok)load(true)}).catch(function(){$("resOut").textContent="ส่งไฟล์ไม่ได้"})};
     r.readAsText(f)});
   function mkRow(){var d=document.createElement("div");d.className="mkrow";d.innerHTML='<input class="pin" type="text" maxlength="200" placeholder="ชื่อสินค้า / รหัส" aria-label="ชื่อสินค้า"><input class="pin" type="number" inputmode="numeric" min="1" step="1" placeholder="จำนวน" aria-label="จำนวน">';$("mkItems").appendChild(d)}
-  function mkLabels(){var v=$("mkCat").value;$("mkRefL").textContent=v==="ภายใน"?"เลขใบลดหนี้":v==="ย้ายคลัง"?"เลขใบย้ายคลัง":"เลขคำสั่งซื้อ / เลขเอกสาร";$("mkCustL").textContent=v==="ย้ายคลัง"?"จากคลัง → ไปคลัง":"รหัสลูกค้า (ถ้ามี)"}
+  function mkLabels(){var v=$("mkCat").value;$("mkRefL").textContent=v==="ภายใน"?"เลขใบลดหนี้":v==="ย้ายคลัง"?"เลขใบย้ายคลัง":"เลขคำสั่งซื้อ / เลขเอกสาร";$("mkCustL").textContent="รหัสลูกค้า (ถ้ามี)";
+    $("mkTr").hidden=v!=="ย้ายคลัง";$("mkCustW").hidden=v==="ย้ายคลัง";Array.prototype.forEach.call($("mkSeg").querySelectorAll("button"),function(b){b.setAttribute("aria-pressed",String(b.dataset.cat===v))})}
+  function mkOpen(cat){$("mkCat").value=cat;mkLabels();var d=$("mkBox");d.open=true;if(d.scrollIntoView)d.scrollIntoView({block:"start"});if($("mkRef").focus)$("mkRef").focus()}
+  $("mkSeg").addEventListener("click",function(e){var b=e.target.closest("button[data-cat]");if(!b)return;$("mkCat").value=b.dataset.cat;mkLabels()});
+  $("mkBar").addEventListener("click",function(e){var b=e.target.closest("button[data-mk]");if(b)mkOpen(b.dataset.mk)});
   mkRow();mkRow();mkLabels();try{$("mkDate").value=new Date().toISOString().slice(0,10)}catch(_){}
-  $("mkCat").addEventListener("change",mkLabels);
   $("mkAdd").addEventListener("click",mkRow);
   $("mkForm").addEventListener("submit",function(e){e.preventDefault();var o=$("mkOut"),rows=$("mkItems").querySelectorAll(".mkrow"),items=[],bad=0,i;
     for(i=0;i<rows.length;i++){var ins=rows[i].querySelectorAll("input"),n=ins[0].value.trim(),q=ins[1].value.trim();if(!n&&!q)continue;if(!n||!(+q>0)){bad++;continue}items.push({name:n,qty:+q})}
     if(bad){o.textContent="มีรายการที่ใส่ไม่ครบ ต้องมีทั้งชื่อสินค้าและจำนวน";return}
     if(!items.length){o.textContent="ใส่สินค้าอย่างน้อย 1 รายการ";return}
+    var tr=$("mkCat").value==="ย้ายคลัง",fr=$("mkFrom").value.trim(),to=$("mkTo").value.trim();
+    if(tr&&(!fr||!to)){o.textContent="ใส่ทั้ง จากคลัง และ ไปคลัง";return}
     o.textContent="กำลังสร้าง…";
-    api("create",{cat:$("mkCat").value,ref:$("mkRef").value,cust:$("mkCust").value,date:$("mkDate").value,items:items}).then(function(j){
+    api("create",{cat:$("mkCat").value,ref:$("mkRef").value,cust:tr?fr+" → "+to:$("mkCust").value,date:$("mkDate").value,items:items}).then(function(j){
       if(j._status===401){gate("login");return}
-      if(j.ok){o.textContent="สร้างแล้ว: "+$("mkCat").value+" "+$("mkRef").value.trim()+" ("+items.length+" รายการ) อยู่ในแท็บ ยังไม่ตรวจ";$("mkRef").value="";$("mkCust").value="";$("mkItems").innerHTML="";mkRow();mkRow();load(true);return}
+      if(j.ok){o.textContent="สร้างแล้ว: "+$("mkCat").value+" "+$("mkRef").value.trim()+" ("+items.length+" รายการ) อยู่ในหมวด "+$("mkCat").value+" แท็บ ยังไม่ตรวจ";state.plats=[$("mkCat").value];state.tab="todo";$("mkRef").value="";$("mkCust").value="";$("mkFrom").value="";$("mkTo").value="";$("mkItems").innerHTML="";mkRow();mkRow();load(true);return}
       o.textContent=j.error==="dup"?"มีใบเลขนี้ในหมวดนี้อยู่แล้ว ไม่สร้างซ้ำ":j.error==="no_items"?"ใส่สินค้าอย่างน้อย 1 รายการ":j.error==="admin_only"?"ต้องเข้าด้วย PIN แอดมิน":"สร้างไม่สำเร็จ ตรวจเลขเอกสารแล้วลองอีกครั้ง";
     }).catch(function(){o.textContent="เชื่อมต่อไม่ได้"})});
   $("pinGo").addEventListener("click",function(){var d=$("pinBox");d.open=true;if(d.scrollIntoView)d.scrollIntoView({block:"start"});if($("pcOld").focus)$("pcOld").focus()});
