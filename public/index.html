@@ -906,11 +906,12 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     document.getElementById("camT").textContent=c?(c.order||"")+" · "+(c.photos||[]).length+" รูปในใบนี้":""}
   // when the live camera cannot run here (some in-app browsers), switch this phone to the phone's own camera button for good
   function camFallback(id,why){var fb=document.querySelector('input[data-camfb="'+id+'"]');CAMFB=true;try{localStorage.setItem("rc_camfb","1")}catch(_){}say(why);if(fb)fb.click();render()}
-  function camOpen(id){if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)){camFallback(id,"เบราว์เซอร์นี้เปิดกล้องในหน้าไม่ได้ ใช้กล้องของเครื่องแทน");return}
+  function camDiag(ev,e){try{fetch("/api?a=diag",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ev:ev,name:e&&e.name||"",msg:e&&e.message||"",ua:navigator.userAgent,gum:String(!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)),secure:String(window.isSecureContext)}),keepalive:true})}catch(_){}}
+  function camOpen(id){camDiag("tap");if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)){camDiag("no_gum");camFallback(id,"เบราว์เซอร์นี้เปิดกล้องในหน้าไม่ได้ ใช้กล้องของเครื่องแทน");return}
     var d=camEl(),done=false;CAM={id:id,stream:null,q:[],shot:0,sent:0,bad:0};say("กำลังเปิดกล้อง…");
     var why={NotAllowedError:"ยังไม่ได้อนุญาตให้เว็บใช้กล้อง (ตั้งค่าเบราว์เซอร์ → สิทธิ์ของเว็บไซต์ → กล้อง)",NotReadableError:"กล้องถูกแอปอื่นใช้อยู่ ปิดแอปกล้อง/แอปอื่นก่อน",NotFoundError:"ไม่พบกล้องในเครื่อง"};
-    function fail(e){if(done)return;done=true;var n=e&&e.name||"timeout";camFallback(id,"เปิดกล้องในหน้านี้ไม่ได้: "+(why[n]||(n==="timeout"?"กล้องไม่ตอบสนอง":n)+" · ใช้กล้องของเครื่องแทน · ถ้าเปิดผ่าน LINE/Facebook ให้เปิดใน Chrome"))}
-    function ok(st){if(done){st.getTracks().forEach(function(t){t.stop()});return}done=true;CAM.stream=st;var v=document.getElementById("camV");v.srcObject=st;d.hidden=false;document.body.style.overflow="hidden";camInfo();var p=v.play();if(p&&p.catch)p.catch(function(){})}
+    function fail(e){if(done)return;done=true;var n=e&&e.name||"timeout";camDiag("fail",e||{name:"timeout"});camFallback(id,"เปิดกล้องในหน้านี้ไม่ได้: "+(why[n]||(n==="timeout"?"กล้องไม่ตอบสนอง":n)+" · ใช้กล้องของเครื่องแทน · ถ้าเปิดผ่าน LINE/Facebook ให้เปิดใน Chrome"))}
+    function ok(st){if(done){st.getTracks().forEach(function(t){t.stop()});return}done=true;camDiag("ok");CAM.stream=st;var v=document.getElementById("camV");v.srcObject=st;d.hidden=false;document.body.style.overflow="hidden";camInfo();var p=v.play();if(p&&p.catch)p.catch(function(){})}
     var timer=setTimeout(function(){fail({name:"timeout"})},8000);
     navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false})
       .catch(function(e){if(e&&e.name==="OverconstrainedError")return navigator.mediaDevices.getUserMedia({video:true,audio:false});throw e})
