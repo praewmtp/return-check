@@ -907,10 +907,14 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
   // when the live camera cannot run here (some in-app browsers), switch this phone to the phone's own camera button for good
   function camFallback(id,why){var fb=document.querySelector('input[data-camfb="'+id+'"]');CAMFB=true;try{localStorage.setItem("rc_camfb","1")}catch(_){}say(why);if(fb)fb.click();render()}
   function camOpen(id){if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)){camFallback(id,"เบราว์เซอร์นี้เปิดกล้องในหน้าไม่ได้ ใช้กล้องของเครื่องแทน");return}
-    var d=camEl();CAM={id:id,stream:null,q:[],shot:0,sent:0,bad:0};
-    navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}},audio:false}).then(function(st){
-      CAM.stream=st;var v=document.getElementById("camV");v.srcObject=st;d.hidden=false;document.body.style.overflow="hidden";camInfo();var p=v.play();if(p&&p.catch)p.catch(function(){})
-    }).catch(function(){camFallback(id,"เปิดกล้องในหน้านี้ไม่ได้ (ยังไม่อนุญาตกล้อง หรือเปิดผ่านแอปอื่น เช่น LINE) ใช้กล้องของเครื่องแทน · ถ้าเปิดใน Safari/Chrome จะถ่ายต่อเนื่องได้")})}
+    var d=camEl(),done=false;CAM={id:id,stream:null,q:[],shot:0,sent:0,bad:0};say("กำลังเปิดกล้อง…");
+    var why={NotAllowedError:"ยังไม่ได้อนุญาตให้เว็บใช้กล้อง (ตั้งค่าเบราว์เซอร์ → สิทธิ์ของเว็บไซต์ → กล้อง)",NotReadableError:"กล้องถูกแอปอื่นใช้อยู่ ปิดแอปกล้อง/แอปอื่นก่อน",NotFoundError:"ไม่พบกล้องในเครื่อง"};
+    function fail(e){if(done)return;done=true;var n=e&&e.name||"timeout";camFallback(id,"เปิดกล้องในหน้านี้ไม่ได้: "+(why[n]||(n==="timeout"?"กล้องไม่ตอบสนอง":n)+" · ใช้กล้องของเครื่องแทน · ถ้าเปิดผ่าน LINE/Facebook ให้เปิดใน Chrome"))}
+    function ok(st){if(done){st.getTracks().forEach(function(t){t.stop()});return}done=true;CAM.stream=st;var v=document.getElementById("camV");v.srcObject=st;d.hidden=false;document.body.style.overflow="hidden";camInfo();var p=v.play();if(p&&p.catch)p.catch(function(){})}
+    var timer=setTimeout(function(){fail({name:"timeout"})},8000);
+    navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false})
+      .catch(function(e){if(e&&e.name==="OverconstrainedError")return navigator.mediaDevices.getUserMedia({video:true,audio:false});throw e})
+      .then(function(st){clearTimeout(timer);ok(st)},function(e){clearTimeout(timer);fail(e)})}
   function camShot(){var v=document.getElementById("camV");if(!v.videoWidth||!CAM.id)return;var k=Math.min(1,1600/Math.max(v.videoWidth,v.videoHeight)),cv=document.createElement("canvas");
     cv.width=Math.round(v.videoWidth*k);cv.height=Math.round(v.videoHeight*k);cv.getContext("2d").drawImage(v,0,0,cv.width,cv.height);
     var f=document.getElementById("camF");f.className="on";setTimeout(function(){f.className=""},120);
