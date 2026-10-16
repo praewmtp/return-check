@@ -848,12 +848,22 @@ class handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(raw)
                 return
+            if a == 'diaglog' and method == 'GET':
+                w = self._who(auth)
+                if not w or w['r'] != 'admin':
+                    return self._send(403, {'error': 'admin_only'})
+                return self._send(200, {'reports': meta_get('camdiag') or []})
             if method != 'POST':
                 return self._send(404, {'error': 'not_found'})
             b = self._body()
             if a == 'diag':  # camera trouble report from a phone: printed to the server log only, nothing stored
                 d = {k: str(b.get(k) or '')[:200] for k in ('ev', 'name', 'msg', 'ua', 'gum', 'secure')}
                 print('CAMDIAG ' + json.dumps(d, ensure_ascii=False), flush=True)
+                d['at'] = dt.datetime.utcnow().isoformat() + 'Z'
+                try:
+                    meta_set('camdiag', (meta_get('camdiag') or [])[-39:] + [d])  # last 40 reports only: phone model/browser + error name
+                except Exception:
+                    pass
                 return self._send(200, {'ok': True})
             if a == 'setup':
                 if auth:
