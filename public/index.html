@@ -724,9 +724,11 @@ details.more dt{color:var(--muted)} details.more dd{margin:0;font-family:var(--m
     var lf=e.target.closest('form[data-act="loc"]');
     if(lf){e.preventDefault();var lid=lf.closest(".card").dataset.id,lc=find(lid);if(!lc)return;var la=readLoc(lf,lc),ln=la.filter(function(v){return v}).length;
       var li2=readIss(lf,lc); if(li2.some(function(x){return x&&!x.n})){say("เขียนโน้ตของรายการที่มีปัญหาก่อน");return}
-      if(lc.check==="ok"&&li2.some(function(x){return x})){say("ใบนี้กดไว้ว่า ได้ของครบ ถ้ามีรายการมีปัญหา ให้กด แก้ไข แล้วเลือก ได้ของไม่ครบ");return}
       if(!ln&&!locAny(lc)){say("พิมพ์ชื่อคลังก่อน");return}
-      write(lid,{item_issue:li2,loc_items:la,loc:locSum(lc,la),loc_at:new Date().toISOString(),loc_by:uid||""},ln<la.length?"บันทึกแล้ว "+ln+" จาก "+la.length+" รายการ ยังเหลืออีก "+(la.length-ln):"บันทึกคลังครบทุกรายการแล้ว");return}
+      var now=new Date().toISOString(),pp={item_issue:li2,loc_items:la,loc:locSum(lc,la),loc_at:now,loc_by:uid||""},sw=lc.check==="ok"&&(li2.some(function(x){return x})||la.some(function(v){return v===MISS}));
+      // a problem found after "ได้ของครบ" was tapped: the result becomes "ได้ของไม่ครบ" and the card goes to ติดปัญหา
+      if(sw){pp.check="part";pp.checked_at=now;pp.checked_by=uid||"";pp.prob_ok=false;pp.prob_at="";pp.prob_by=""}
+      write(lid,pp,sw?"บันทึกแล้ว · เปลี่ยนผลเป็น ได้ของไม่ครบ ใบนี้ไปอยู่แท็บ ติดปัญหา":ln<la.length?"บันทึกแล้ว "+ln+" จาก "+la.length+" รายการ ยังเหลืออีก "+(la.length-ln):"บันทึกคลังครบทุกรายการแล้ว");return}
     var f=e.target.closest('form[data-act="note"]'); if(!f)return; e.preventDefault();
     var id=f.closest(".card").dataset.id, tx=f.querySelector("textarea").value.trim(), li=f.querySelector("input[data-loc]"), c0=find(id)||{items:[]};
     var pt={}; if(tx!==(c0.note||"")){pt.note=tx;pt.note_at=tx?new Date().toISOString():"";pt.note_by=tx?(uid||""):""}
